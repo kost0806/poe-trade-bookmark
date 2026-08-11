@@ -10,6 +10,7 @@ const emptyEl = document.getElementById('empty');
 const countEl = document.getElementById('count');
 
 let current = null; // 현재 탭에서 파싱한 거래소 검색 정보
+let savedBookmark = null; // 현재 검색이 이미 저장돼 있다면 그 북마크
 let renderedUrl; // 폼에 이미 반영해 둔 URL (불필요한 재렌더 방지)
 let panelWindowId; // 이 사이드 패널이 속한 창
 
@@ -90,9 +91,21 @@ function renderList(bookmarks) {
   }
 }
 
+/** 저장된 검색이면 '이름 변경', 아니면 '북마크 추가'. 바뀔 내용이 없으면 잠근다. */
+function syncButton() {
+  const name = titleEl.value.trim();
+  if (savedBookmark) {
+    addBtn.textContent = '이름 변경';
+    addBtn.disabled = name === '' || name === savedBookmark.title;
+  } else {
+    addBtn.textContent = '북마크 추가';
+    addBtn.disabled = false;
+  }
+}
+
 async function renderForm() {
-  addBtn.disabled = false;
-  addBtn.textContent = '북마크 추가';
+  savedBookmark = null;
+  syncButton();
 
   if (!current) {
     setStatus('PoE 거래소 검색 페이지를 열면 여기에 저장할 수 있습니다.', 'error');
@@ -109,16 +122,15 @@ async function renderForm() {
   formEl.hidden = false;
   targetEl.textContent = current.url;
 
-  const saved = (await getBookmarks()).find((b) => b.url === current.url);
-  if (saved) {
-    setStatus('이미 저장된 검색입니다.', null);
-    titleEl.value = saved.title;
-    addBtn.disabled = true;
-    addBtn.textContent = '저장됨';
+  savedBookmark = (await getBookmarks()).find((b) => b.url === current.url) ?? null;
+  if (savedBookmark) {
+    setStatus('이미 저장된 검색입니다. 이름을 고치면 바꿀 수 있습니다.', null);
+    titleEl.value = savedBookmark.title;
   } else {
     setStatus('', null);
     titleEl.value = suggestTitle(current);
   }
+  syncButton();
 }
 
 /** 현재 탭을 다시 읽어 폼을 갱신한다. URL이 그대로면 입력 중인 이름을 보존한다. */
@@ -132,31 +144,46 @@ async function refresh({ force = false } = {}) {
   await renderForm();
 }
 
+titleEl.addEventListener('input', syncButton);
+
 formEl.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!current) return;
 
   const bookmarks = await getBookmarks();
-  if (bookmarks.some((b) => b.url === current.url)) {
-    await renderForm();
-    return;
+  const existing = bookmarks.find((b) => b.url === current.url);
+  const name = titleEl.value.trim() || suggestTitle(current);
+
+  let updated;
+  let record;
+  let message;
+
+  if (existing) {
+    if (name === existing.title) return;
+    // 같은 검색을 다시 저장하면 새로 추가하지 않고 이름만 바꾼다.
+    record = { ...existing, title: name, updatedAt: Date.now() };
+    updated = bookmarks.map((b) => (b.id === existing.id ? record : b));
+    message = `이름을 "${name}"(으)로 바꿨습니다.`;
+  } else {
+    record = {
+      id: crypto.randomUUID(),
+      title: name,
+      url: current.url,
+      league: current.league,
+      mode: current.mode,
+      searchId: current.searchId,
+      createdAt: Date.now(),
+    };
+    updated = [record, ...bookmarks];
+    message = '북마크를 추가했습니다.';
   }
 
-  const bookmark = {
-    id: crypto.randomUUID(),
-    title: titleEl.value.trim() || suggestTitle(current),
-    url: current.url,
-    league: current.league,
-    mode: current.mode,
-    searchId: current.searchId,
-    createdAt: Date.now(),
-  };
-
-  // 저장 결과는 storage.onChanged에서 목록에 반영된다.
-  addBtn.disabled = true;
-  addBtn.textContent = '저장됨';
-  setStatus('북마크를 추가했습니다.', 'ok');
-  await setBookmarks([bookmark, ...bookmarks]);
+  // 저장 전에 상태를 맞춰 둬야 storage.onChanged가 폼을 다시 그리지 않고,
+  // 아래 안내 문구가 그대로 남는다. 목록 갱신은 onChanged가 처리한다.
+  savedBookmark = record;
+  syncButton();
+  setStatus(message, 'ok');
+  await setBookmarks(updated);
 });
 
 // 탭 전환
@@ -175,9 +202,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const bookmarks = changes[STORAGE_KEY].newValue ?? [];
   renderList(bookmarks);
 
-  // 현재 검색의 저장 여부가 버튼 상태와 어긋나면 폼을 다시 그린다.
-  const saved = current ? bookmarks.some((b) => b.url === current.url) : false;
-  if (saved !== addBtn.disabled) renderForm();
+  // 저장 상태가 폼에 반영된 것과 달라졌을 때만 다시 그린다.
+  const match = current ? bookmarks.find((b) => b.url === current.url) ?? null : null;
+  const inSync =
+    match?.id === savedBookmark?.id && match?.title === savedBookmark?.title;
+  if (!inSync) renderForm();
 });
 
 (async function init() {
