@@ -5,14 +5,18 @@
  *   https://www.pathofexile.com/trade/search/<league>/<id>
  *   https://www.pathofexile.com/trade/search/<league>
  *   https://www.pathofexile.com/trade/exchange/<league>/<id>
- *   https://poe.game.daum.net/trade/search/<league>/<id>   (한국 서버)
+ *   https://poe.kakaogames.com/trade/search/<league>/<id>  (한국 서버)
+ *   https://poe.game.daum.net/trade/search/<league>/<id>   (한국 서버 구 도메인)
  *   위 형태에 /<locale>/ 세그먼트가 끼어드는 경우도 허용
  *
  * PoE2(/trade2/)는 대상이 아니므로 제외한다.
+ *
+ * 여기의 호스트 목록은 manifest.json의 host_permissions와 함께 유지해야 한다.
  */
 const TRADE_HOSTS = [
   'www.pathofexile.com',
   'pathofexile.com',
+  'poe.kakaogames.com',
   'poe.game.daum.net',
   'br.pathofexile.com',
   'ru.pathofexile.com',

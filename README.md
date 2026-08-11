@@ -19,11 +19,21 @@ Path of Exile 1 거래소(Trade)의 검색 결과 URL을 북마크로 저장하�
 
 ## 지원 사이트
 
+- `poe.kakaogames.com` (한국 서버)
+- `poe.game.daum.net` (한국 서버 구 도메인)
 - `www.pathofexile.com` 및 각 언어권 서브도메인(`kr.`, `jp.`, `ru.` 등)
-- `poe.game.daum.net` (한국 서버)
 - 일반 검색(`/trade/search/`)과 대량 거래(`/trade/exchange/`) 모두
 
 PoE2(`/trade2/`)는 대상이 아닙니다.
+
+## 권한
+
+`manifest.json`의 `host_permissions`로 위 사이트의 `/trade/*` 경로에만 접근합니다.
+확장은 이 권한으로 현재 탭의 주소를 읽어 검색 ID를 추출합니다. 그 외 사이트의
+주소는 읽지 않으며, 페이지에 스크립트를 주입하지도 않습니다.
+
+사이트를 추가하려면 `manifest.json`의 `host_permissions`와 `trade-url.js`의
+`TRADE_HOSTS` 두 곳을 함께 수정해야 합니다.
 
 ## 저장 방식
 
