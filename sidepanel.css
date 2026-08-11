@@ -139,6 +139,137 @@ button {
   word-break: break-all;
 }
 
+/* --- 16T 8모드 빌더 --- */
+.section-toggle {
+  width: 100%;
+  padding: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.section-toggle:hover {
+  color: var(--accent);
+}
+
+.row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.row > input,
+.row > select {
+  flex: 1;
+  min-width: 0;
+}
+
+select {
+  padding: 5px 6px;
+  background: #15120f;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+}
+
+.mini {
+  flex: none;
+  padding: 5px 8px;
+  background: #342c24;
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.mini:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.mod-list {
+  max-height: 210px;
+  overflow-y: auto;
+  margin: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #15120f;
+}
+
+.mod-group {
+  padding: 4px 6px;
+  background: #241f1a;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.mod-item {
+  display: flex;
+  gap: 6px;
+  padding: 3px 6px;
+  cursor: pointer;
+  align-items: flex-start;
+}
+
+.mod-item:hover {
+  background: #241f1a;
+}
+
+.mod-item input {
+  margin: 3px 0 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.mod-item span {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.mod-item .kw {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+#regex-out {
+  font-family: Consolas, monospace;
+  font-size: 12px;
+}
+
+#run-search {
+  width: 100%;
+  margin-top: 6px;
+  padding: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+#run-search:hover {
+  background: var(--accent-hover);
+}
+
+#run-search:disabled {
+  background: #4a423a;
+  cursor: default;
+}
+
+#builder-status {
+  margin-top: 6px;
+}
+
+.count.over {
+  color: #d08a6a;
+}
+
 .list {
   flex: 1;
   min-height: 0;

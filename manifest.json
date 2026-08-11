@@ -1,14 +1,17 @@
 {
   "manifest_version": 3,
   "name": "PoE Trade Bookmark",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Path of Exile 1 거래소 검색 결과를 북마크로 저장합니다.",
   "minimum_chrome_version": "114",
   "permissions": ["storage", "sidePanel"],
   "host_permissions": [
     "https://poe.kakaogames.com/trade/*",
+    "https://poe.kakaogames.com/api/trade/*",
     "https://poe.game.daum.net/trade/*",
-    "https://*.pathofexile.com/trade/*"
+    "https://poe.game.daum.net/api/trade/*",
+    "https://*.pathofexile.com/trade/*",
+    "https://*.pathofexile.com/api/trade/*"
   ],
   "background": {
     "service_worker": "background.js"

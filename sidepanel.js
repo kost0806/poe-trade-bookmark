@@ -76,6 +76,22 @@ function renderList(bookmarks) {
     open.append(title, meta);
     open.addEventListener('click', () => openBookmark(bookmark));
 
+    li.append(open);
+
+    if (bookmark.regex) {
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'item-delete';
+      copy.textContent = '정규식';
+      copy.title = `인게임 정규식 복사\n${bookmark.regex}`;
+      copy.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(bookmark.regex);
+        copy.textContent = '복사됨';
+        setTimeout(() => (copy.textContent = '정규식'), 1200);
+      });
+      li.append(copy);
+    }
+
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'item-delete';
@@ -86,7 +102,7 @@ function renderList(bookmarks) {
       await setBookmarks(remaining);
     });
 
-    li.append(open, del);
+    li.append(del);
     listEl.append(li);
   }
 }
@@ -126,6 +142,10 @@ async function renderForm() {
   if (savedBookmark) {
     setStatus('이미 저장된 검색입니다. 이름을 고치면 바꿀 수 있습니다.', null);
     titleEl.value = savedBookmark.title;
+  } else if (pending && pending.url === current.url) {
+    // 방금 8모드 빌더로 만든 검색 — 이름과 정규식을 미리 채워 둔다.
+    setStatus('저장하면 인게임 정규식도 함께 보관됩니다.', null);
+    titleEl.value = pending.title;
   } else {
     setStatus('', null);
     titleEl.value = suggestTitle(current);
@@ -173,6 +193,8 @@ formEl.addEventListener('submit', async (event) => {
       mode: current.mode,
       searchId: current.searchId,
       createdAt: Date.now(),
+      // 8모드 빌더로 만든 검색이면 인게임 정규식을 같이 저장한다.
+      ...(pending && pending.url === current.url ? { regex: pending.regex } : {}),
     };
     updated = [record, ...bookmarks];
     message = '북마크를 추가했습니다.';
@@ -209,8 +231,233 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (!inSync) renderForm();
 });
 
+/* ---------------- 16T 8모드 검색 만들기 ---------------- */
+
+const BUILDER_KEY = 'builder';
+const LEAGUE_CACHE_KEY = 'leagues';
+// DEFAULT_ORIGIN / REGEX_MAX / buildRegex / buildSearchQuery 는 trade-query.js 전역
+const FALLBACK_LEAGUES =[{ id: 'Allflame', text: '올플레임' }, { id: 'Standard', text: 'Standard' }];
+// 계정 한도가 5초당 3회다. 버튼 연타로 한도를 태우지 않도록 최소 간격을 둔다.
+const SEARCH_COOLDOWN_MS = 2500;
+
+const builderEl = document.getElementById('builder');
+const builderToggle = document.getElementById('builder-toggle');
+const builderArrow = document.getElementById('builder-arrow');
+const leagueEl = document.getElementById('league');
+const modSearchEl = document.getElementById('mod-search');
+const modListEl = document.getElementById('mod-list');
+const regexOutEl = document.getElementById('regex-out');
+const regexLenEl = document.getElementById('regex-len');
+const runSearchBtn = document.getElementById('run-search');
+const builderStatusEl = document.getElementById('builder-status');
+
+const selected = new Set(); // 거를 모드 키
+let lastSearchAt = 0;
+let pending = null; // 방금 만든 검색 {url, title, regex}
+
+const modKey = (mod) => mod.ids.join(',');
+const selectedMods = () => MAP_MODS.filter((m) => selected.has(modKey(m)));
+
+function setBuilderStatus(message, kind) {
+  builderStatusEl.textContent = message;
+  builderStatusEl.className = kind ? `status ${kind}` : 'status';
+  builderStatusEl.hidden = !message;
+}
+
+/** 현재 탭이 거래소면 그 서버를, 아니면 카카오 서버를 쓴다. */
+async function tradeOrigin() {
+  const [tab] = await chrome.tabs.query({ active: true, windowId: panelWindowId });
+  const parsed = parseTradeUrl(tab?.url ?? '');
+  return parsed ? new URL(parsed.url).origin : DEFAULT_ORIGIN;
+}
+
+function renderMods() {
+  const q = modSearchEl.value.trim();
+  modListEl.textContent = '';
+
+  let group = null;
+  for (const mod of MAP_MODS) {
+    if (q && !mod.text.includes(q) && !mod.affix.includes(q)) continue;
+
+    if (mod.group !== group) {
+      group = mod.group;
+      const head = document.createElement('div');
+      head.className = 'mod-group';
+      head.textContent = group;
+      modListEl.append(head);
+    }
+
+    const key = modKey(mod);
+    const label = document.createElement('label');
+    label.className = 'mod-item';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = selected.has(key);
+    cb.addEventListener('change', () => {
+      cb.checked ? selected.add(key) : selected.delete(key);
+      updateRegex();
+      saveBuilderState();
+    });
+
+    const text = document.createElement('span');
+    text.textContent = mod.text.split('\n')[0];
+    const kw = document.createElement('span');
+    kw.className = 'kw';
+    kw.textContent = ` (${mod.regex})`;
+    text.append(kw);
+
+    label.append(cb, text);
+    modListEl.append(label);
+  }
+}
+
+function updateRegex() {
+  const regex = buildRegex(selectedMods());
+  regexOutEl.value = regex;
+  regexLenEl.textContent = regex ? `${regex.length} / ${REGEX_MAX}` : '';
+  regexLenEl.className = regex.length > REGEX_MAX ? 'count over' : 'count';
+  runSearchBtn.textContent = selected.size
+    ? `거래소 검색 만들기 (${selected.size}개 거름)`
+    : '거래소 검색 만들기';
+}
+
+async function saveBuilderState() {
+  await chrome.storage.local.set({
+    [BUILDER_KEY]: { selected: [...selected], league: leagueEl.value, open: !builderEl.hidden },
+  });
+}
+
+async function loadLeagues(origin) {
+  const cached = (await chrome.storage.local.get(LEAGUE_CACHE_KEY))[LEAGUE_CACHE_KEY];
+  if (cached && cached.origin === origin && Date.now() - cached.at < 24 * 3600 * 1000) {
+    return cached.leagues;
+  }
+  try {
+    const res = await fetch(`${origin}/api/trade/data/leagues`, { credentials: 'include' });
+    const body = await res.json();
+    const leagues = body.result.filter((l) => l.realm === 'pc').map((l) => ({ id: l.id, text: l.text || l.id }));
+    await chrome.storage.local.set({ [LEAGUE_CACHE_KEY]: { origin, at: Date.now(), leagues } });
+    return leagues;
+  } catch {
+    return FALLBACK_LEAGUES;
+  }
+}
+
+async function runSearch() {
+  const mods = selectedMods();
+  const wait = SEARCH_COOLDOWN_MS - (Date.now() - lastSearchAt);
+  if (wait > 0) {
+    setBuilderStatus(`거래소 요청 제한 때문에 ${Math.ceil(wait / 1000)}초 후에 다시 눌러주세요.`, 'error');
+    return;
+  }
+
+  const origin = await tradeOrigin();
+  // 리그 목록을 못 불러온 상황에서도 빈 주소로 요청하지 않도록 한다.
+  const league = leagueEl.value || DEFAULT_LEAGUE;
+  const query = buildSearchQuery({ modIds: mods.flatMap((m) => m.ids) });
+
+  runSearchBtn.disabled = true;
+  setBuilderStatus('거래소에 검색을 등록하는 중…', null);
+  lastSearchAt = Date.now();
+
+  try {
+    const res = await fetch(`${origin}/api/trade/search/${encodeURIComponent(league)}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query),
+    });
+
+    if (res.status === 429) {
+      const retry = res.headers.get('Retry-After');
+      setBuilderStatus(`거래소 요청 한도 초과. ${retry ?? '잠시'}초 후 다시 시도하세요.`, 'error');
+      return;
+    }
+    if (!res.ok) {
+      setBuilderStatus(`검색 실패 (HTTP ${res.status}). 거래소 로그인 상태를 확인하세요.`, 'error');
+      return;
+    }
+
+    const body = await res.json();
+    if (!body.id) {
+      setBuilderStatus(`검색 실패: ${body.error?.message ?? '알 수 없는 응답'}`, 'error');
+      return;
+    }
+
+    const url = `${origin}/trade/search/${encodeURIComponent(league)}/${body.id}`;
+    pending = {
+      url,
+      title: `16T 8모드 (${mods.length}개 거름)`,
+      regex: buildRegex(mods),
+    };
+    setBuilderStatus(`검색 결과 ${body.total ?? 0}개. 위에서 이름을 정해 저장하세요.`, 'ok');
+
+    const [tab] = await chrome.tabs.query({ active: true, windowId: panelWindowId });
+    if (tab && parseTradeUrl(tab.url ?? '')) await chrome.tabs.update(tab.id, { url });
+    else await chrome.tabs.create({ url, windowId: panelWindowId });
+  } catch (e) {
+    setBuilderStatus(`요청 중 오류: ${e.message}`, 'error');
+  } finally {
+    runSearchBtn.disabled = false;
+  }
+}
+
+builderToggle.addEventListener('click', () => {
+  builderEl.hidden = !builderEl.hidden;
+  builderArrow.textContent = builderEl.hidden ? '▶' : '▼';
+  saveBuilderState();
+});
+
+modSearchEl.addEventListener('input', renderMods);
+leagueEl.addEventListener('change', saveBuilderState);
+runSearchBtn.addEventListener('click', runSearch);
+
+document.getElementById('preset-rec').addEventListener('click', () => {
+  selected.clear();
+  for (const m of MAP_MODS) if (m.rec) selected.add(modKey(m));
+  renderMods();
+  updateRegex();
+  saveBuilderState();
+});
+
+document.getElementById('preset-none').addEventListener('click', () => {
+  selected.clear();
+  renderMods();
+  updateRegex();
+  saveBuilderState();
+});
+
+document.getElementById('copy-regex').addEventListener('click', async () => {
+  if (!regexOutEl.value) return;
+  await navigator.clipboard.writeText(regexOutEl.value);
+  setBuilderStatus('정규식을 복사했습니다.', 'ok');
+});
+
+async function initBuilder() {
+  const saved = (await chrome.storage.local.get(BUILDER_KEY))[BUILDER_KEY] ?? {};
+  for (const key of saved.selected ?? []) selected.add(key);
+
+  builderEl.hidden = !saved.open;
+  builderArrow.textContent = saved.open ? '▼' : '▶';
+
+  const leagues = await loadLeagues(await tradeOrigin());
+  leagueEl.textContent = '';
+  for (const l of leagues) {
+    const opt = document.createElement('option');
+    opt.value = l.id;
+    opt.textContent = l.text;
+    leagueEl.append(opt);
+  }
+  if (saved.league && leagues.some((l) => l.id === saved.league)) leagueEl.value = saved.league;
+
+  renderMods();
+  updateRegex();
+}
+
 (async function init() {
   panelWindowId = (await chrome.windows.getCurrent()).id;
   renderList(await getBookmarks());
   await refresh({ force: true });
+  await initBuilder();
 })();

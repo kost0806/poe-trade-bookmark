@@ -27,6 +27,42 @@
       </form>
     </section>
 
+    <section class="card builder-card">
+      <h2>
+        <button type="button" id="builder-toggle" class="section-toggle">
+          <span id="builder-arrow">▶</span> 16T 8모드 검색 만들기
+        </button>
+      </h2>
+
+      <div id="builder" hidden>
+        <div class="row">
+          <select id="league" title="리그"></select>
+          <button type="button" id="preset-rec" class="mini">추천</button>
+          <button type="button" id="preset-none" class="mini">해제</button>
+        </div>
+
+        <input
+          id="mod-search"
+          type="text"
+          autocomplete="off"
+          placeholder="맵모드 검색 (예: 반사, 재생)"
+        />
+
+        <div id="mod-list" class="mod-list"></div>
+
+        <label for="regex-out">
+          인게임 정규식 <span id="regex-len" class="count"></span>
+        </label>
+        <div class="row">
+          <input id="regex-out" type="text" readonly placeholder="거를 모드를 선택하세요" />
+          <button type="button" id="copy-regex" class="mini">복사</button>
+        </div>
+
+        <button type="button" id="run-search">거래소 검색 만들기</button>
+        <p id="builder-status" class="status" hidden></p>
+      </div>
+    </section>
+
     <section class="card list-card">
       <h2>저장된 북마크 <span id="count" class="count"></span></h2>
       <ul id="list" class="list"></ul>
@@ -34,6 +70,8 @@
     </section>
 
     <script src="trade-url.js"></script>
+    <script src="map-mods.js"></script>
+    <script src="trade-query.js"></script>
     <script src="sidepanel.js"></script>
   </body>
 </html>
