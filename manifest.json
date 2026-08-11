@@ -23,6 +23,7 @@
       ],
       "js": [
         "trade-url.js",
+        "search-name.js",
         "map-mods.js",
         "presets.js",
         "trade-query.js",

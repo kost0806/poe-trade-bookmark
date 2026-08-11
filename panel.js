@@ -256,6 +256,34 @@ function renderList(bookmarks) {
   }
 }
 
+// 거래소가 폼을 채우기 전에 읽을 수 있다(북마크 링크로 새로 열었을 때). 페이지를
+// 훑는 것뿐이라 비용이 거의 없으니, 값이 보일 때까지 잠깐 다시 본다.
+const FILL_RETRY_MS = 250;
+const FILL_TRIES = 8;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * 검색창·필터에서 뽑은 이름으로 기본값을 바꿔 준다. (titleFromSearchPane은 search-name.js)
+ * 끝까지 못 뽑으면 검색 ID로 만든 이름이 그대로 남는다.
+ */
+async function fillTitle(parsed) {
+  const fallback = suggestTitle(parsed);
+
+  for (let i = 0; i < FILL_TRIES; i++) {
+    // 그 사이 페이지가 바뀌었거나 사용자가 이름을 고쳤으면 건드리지 않는다.
+    if (current?.url !== parsed.url || titleEl.value !== fallback) return;
+
+    const title = titleFromSearchPane(document);
+    if (title) {
+      titleEl.value = title;
+      syncButton();
+      return;
+    }
+    await sleep(FILL_RETRY_MS);
+  }
+}
+
 /** 저장된 검색이면 '이름 변경', 아니면 '북마크 추가'. 바뀔 내용이 없으면 잠근다. */
 function syncButton() {
   const name = titleEl.value.trim();
@@ -297,7 +325,11 @@ async function renderForm() {
     titleEl.value = pending.title;
   } else {
     setStatus('', null);
+    // 우선 검색 ID로 이름을 채워 두고, 검색창의 아이템 이름을 알아내면 그걸로 바꾼다.
     titleEl.value = suggestTitle(current);
+    syncButton();
+    await fillTitle(current);
+    return;
   }
   syncButton();
 }
