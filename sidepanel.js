@@ -250,6 +250,8 @@ const regexOutEl = document.getElementById('regex-out');
 const regexLenEl = document.getElementById('regex-len');
 const runSearchBtn = document.getElementById('run-search');
 const builderStatusEl = document.getElementById('builder-status');
+const presetEl = document.getElementById('preset');
+const presetDescEl = document.getElementById('preset-desc');
 
 const selected = new Set(); // 거를 모드 키
 let lastSearchAt = 0;
@@ -413,19 +415,45 @@ modSearchEl.addEventListener('input', renderMods);
 leagueEl.addEventListener('change', saveBuilderState);
 runSearchBtn.addEventListener('click', runSearch);
 
-document.getElementById('preset-rec').addEventListener('click', () => {
+function applyPreset(id) {
+  const preset = PRESETS.find((p) => p.id === id);
+  if (!preset) return;
+
   selected.clear();
-  for (const m of MAP_MODS) if (m.rec) selected.add(modKey(m));
+  // keys가 없는 프리셋은 map-mods.js의 rec 플래그를 쓴다.
+  const keys = preset.keys ?? MAP_MODS.filter((m) => m.rec).map(modKey);
+  const known = new Set(MAP_MODS.map(modKey));
+  let missing = 0;
+  for (const key of keys) {
+    if (known.has(key)) selected.add(key);
+    else missing++;
+  }
+
   renderMods();
   updateRegex();
   saveBuilderState();
+  setBuilderStatus(
+    missing
+      ? `${preset.label}: ${selected.size}개 적용 (모드 목록에 없는 ${missing}개는 건너뜀)`
+      : `${preset.label}: ${selected.size}개 적용`,
+    missing ? 'error' : 'ok'
+  );
+}
+
+presetEl.addEventListener('change', () => {
+  applyPreset(presetEl.value);
+  const preset = PRESETS.find((p) => p.id === presetEl.value);
+  presetDescEl.textContent = preset?.desc ?? '';
 });
 
 document.getElementById('preset-none').addEventListener('click', () => {
   selected.clear();
+  presetEl.value = '';
+  presetDescEl.textContent = '';
   renderMods();
   updateRegex();
   saveBuilderState();
+  setBuilderStatus('', null);
 });
 
 document.getElementById('copy-regex').addEventListener('click', async () => {
@@ -440,6 +468,17 @@ async function initBuilder() {
 
   builderEl.hidden = !saved.open;
   builderArrow.textContent = saved.open ? '▼' : '▶';
+
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = '프리셋…';
+  presetEl.append(blank);
+  for (const p of PRESETS) {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.label;
+    presetEl.append(opt);
+  }
 
   const leagues = await loadLeagues(await tradeOrigin());
   leagueEl.textContent = '';
