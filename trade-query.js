@@ -9,7 +9,7 @@
 // '# 속성 부여' — 지도의 모드 개수를 세는 유사(pseudo) 스탯
 const AFFIX_COUNT_ID = 'pseudo.pseudo_number_of_affix_mods';
 
-const DEFAULT_ORIGIN = 'https://poe.kakaogames.com';
+// 서버(origin)는 패널이 붙어 있는 거래소 페이지에서 그대로 가져다 쓴다.
 const DEFAULT_LEAGUE = 'Allflame';
 
 // 인게임 검색창 입력 한도

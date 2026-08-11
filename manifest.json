@@ -1,27 +1,47 @@
 {
   "manifest_version": 3,
   "name": "PoE Trade Bookmark",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Path of Exile 1 거래소 검색 결과를 북마크로 저장합니다.",
-  "minimum_chrome_version": "114",
-  "permissions": ["storage", "sidePanel"],
-  "host_permissions": [
-    "https://poe.kakaogames.com/trade/*",
-    "https://poe.kakaogames.com/api/trade/*",
-    "https://poe.game.daum.net/trade/*",
-    "https://poe.game.daum.net/api/trade/*",
-    "https://*.pathofexile.com/trade/*",
-    "https://*.pathofexile.com/api/trade/*"
+  "minimum_chrome_version": "102",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://pathofexile.com/trade",
+        "https://pathofexile.com/trade/*",
+        "https://pathofexile.com/*/trade/*",
+        "https://*.pathofexile.com/trade",
+        "https://*.pathofexile.com/trade/*",
+        "https://*.pathofexile.com/*/trade/*",
+        "https://poe.kakaogames.com/trade",
+        "https://poe.kakaogames.com/trade/*",
+        "https://poe.kakaogames.com/*/trade/*",
+        "https://poe.game.daum.net/trade",
+        "https://poe.game.daum.net/trade/*",
+        "https://poe.game.daum.net/*/trade/*"
+      ],
+      "js": [
+        "trade-url.js",
+        "map-mods.js",
+        "presets.js",
+        "trade-query.js",
+        "panel.js"
+      ],
+      "run_at": "document_idle"
+    }
   ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_title": "PoE Trade Bookmark 사이드바 열기"
-  },
-  "side_panel": {
-    "default_path": "sidepanel.html"
-  },
+  "web_accessible_resources": [
+    {
+      "resources": ["panel.css"],
+      "matches": [
+        "https://pathofexile.com/*",
+        "https://*.pathofexile.com/*",
+        "https://poe.kakaogames.com/*",
+        "https://poe.game.daum.net/*"
+      ]
+    }
+  ],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

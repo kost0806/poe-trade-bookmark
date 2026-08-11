@@ -1,18 +1,175 @@
+/*
+ * 거래소 페이지 안에 직접 붙는 북마크 패널.
+ *
+ * 크롬 사이드 패널은 탭을 옮겨도 계속 떠 있어서, 거래소를 벗어나면 방해가 됐다.
+ * 그래서 콘텐츠 스크립트로 페이지에 심고, 페이지를 떠나면 같이 사라지게 한다.
+ * 거래소의 CSS와 섞이지 않도록 Shadow DOM 안에서 그린다.
+ */
+
 const STORAGE_KEY = 'bookmarks';
+const BUILDER_KEY = 'builder';
+const LEAGUE_CACHE_KEY = 'leagues';
+const PENDING_KEY = 'pending';
+const PANEL_OPEN_KEY = 'panelOpen';
 
-const statusEl = document.getElementById('status');
-const formEl = document.getElementById('add-form');
-const titleEl = document.getElementById('title');
-const targetEl = document.getElementById('target');
-const addBtn = document.getElementById('add-btn');
-const listEl = document.getElementById('list');
-const emptyEl = document.getElementById('empty');
-const countEl = document.getElementById('count');
+const HOST_ID = 'poe-trade-bookmark-root';
 
-let current = null; // 현재 탭에서 파싱한 거래소 검색 정보
+// 칸의 폭. 패널 자신의 width이자, 페이지를 밀어낼 거리이기도 하다.
+// 창이 좁을 때 거래소가 완전히 가려지지 않도록 절반까지만 차지한다.
+const PANEL_WIDTH = 'min(360px, 50vw)';
+
+const PANEL_HTML = `
+  <button type="button" class="toggle" id="toggle"></button>
+
+  <div class="panel" id="panel" hidden>
+    <div class="body">
+      <h1>PoE Trade Bookmark</h1>
+
+      <section class="card">
+        <p id="status" class="status">현재 페이지를 확인하는 중…</p>
+
+        <form id="add-form" hidden>
+          <label for="title">이름</label>
+          <input id="title" type="text" maxlength="80" autocomplete="off" placeholder="북마크 이름" />
+          <p id="target" class="target"></p>
+          <button type="submit" id="add-btn">북마크 추가</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>
+          <button type="button" id="builder-toggle" class="section-toggle">
+            <span id="builder-arrow">▶</span> 16T 8모드 검색 만들기
+          </button>
+        </h2>
+
+        <div id="builder" hidden>
+          <div class="row">
+            <select id="league" title="리그"></select>
+            <select id="preset" title="프리셋"></select>
+            <button type="button" id="preset-none" class="mini">해제</button>
+          </div>
+          <p id="preset-desc" class="target"></p>
+
+          <input id="mod-search" type="text" autocomplete="off" placeholder="맵모드 검색 (예: 반사, 재생)" />
+
+          <div id="mod-list" class="mod-list"></div>
+
+          <label for="regex-out">
+            인게임 정규식 <span id="regex-len" class="count"></span>
+          </label>
+          <div class="row">
+            <input id="regex-out" type="text" readonly placeholder="거를 모드를 선택하세요" />
+            <button type="button" id="copy-regex" class="mini">복사</button>
+          </div>
+
+          <button type="button" id="run-search">거래소 검색 만들기</button>
+          <p id="builder-status" class="status" hidden></p>
+        </div>
+      </section>
+
+      <section class="card list-card">
+        <h2>저장된 북마크 <span id="count" class="count"></span></h2>
+        <ul id="list" class="list"></ul>
+        <p id="empty" class="status" hidden>아직 저장된 북마크가 없습니다.</p>
+      </section>
+    </div>
+  </div>
+`;
+
+/* ---------------- 패널 심기 ---------------- */
+
+const host = document.createElement('div');
+host.id = HOST_ID;
+// 화면 오른쪽 끝에 세로로 꽉 차게 세운다. 위치/쌓임 순서는 거래소 CSS에 밀리지
+// 않도록 인라인으로 못 박고, 스타일이 붙기 전의 맨 얼굴은 잠깐 숨겨 둔다.
+host.style.cssText =
+  'position:fixed;top:0;right:0;bottom:0;z-index:2147483647;margin:0;padding:0;border:0;width:auto;display:none;';
+
+const root = host.attachShadow({ mode: 'open' });
+
+const wrapEl = document.createElement('div');
+wrapEl.className = 'wrap';
+// 폭은 여기 한 곳에서만 정한다. .wrap의 all:initial에 지워지지 않도록 인라인으로 준다.
+wrapEl.style.setProperty('--panel-width', PANEL_WIDTH);
+wrapEl.innerHTML = PANEL_HTML;
+
+root.append(wrapEl);
+// body는 거래소가 통째로 갈아끼울 수 있으므로 documentElement에 붙인다.
+document.documentElement.append(host);
+
+/**
+ * panel.css를 읽어 그림자 트리에만 붙인다.
+ * <link>나 <style>은 거래소의 CSP(style-src)에 막힐 수 있지만, 코드로 만든
+ * 스타일시트는 문서에 로드되는 리소스가 아니라서 그 영향을 받지 않는다.
+ */
+async function applyStyles() {
+  try {
+    const css = await (await fetch(chrome.runtime.getURL('panel.css'))).text();
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(css);
+    root.adoptedStyleSheets = [sheet];
+  } catch (e) {
+    // 스타일을 못 읽어도 패널은 쓸 수 있어야 한다. 모양만 포기하고 계속 간다.
+    console.warn('PoE Trade Bookmark: 스타일을 불러오지 못했습니다.', e);
+  }
+  host.style.display = '';
+}
+
+// 거래소의 전역 단축키가 패널 입력을 가로채지 않도록 키 이벤트를 여기서 끊는다.
+for (const type of ['keydown', 'keyup', 'keypress']) {
+  host.addEventListener(type, (event) => event.stopPropagation());
+}
+
+const $ = (id) => root.getElementById(id);
+
+const toggleEl = $('toggle');
+const panelEl = $('panel');
+const statusEl = $('status');
+const formEl = $('add-form');
+const titleEl = $('title');
+const targetEl = $('target');
+const addBtn = $('add-btn');
+const listEl = $('list');
+const emptyEl = $('empty');
+const countEl = $('count');
+
+/* ---------------- 열기 / 접기 ---------------- */
+
+/**
+ * 칸이 거래소 화면을 덮지 않도록 문서 자체를 그만큼 밀어낸다.
+ * 거래소가 margin을 따로 주더라도 이기도록 !important로 얹는다.
+ */
+function pushPage(open) {
+  const html = document.documentElement.style;
+  if (open) html.setProperty('margin-right', PANEL_WIDTH, 'important');
+  else html.removeProperty('margin-right');
+}
+
+function renderPanel() {
+  const open = !panelEl.hidden;
+  wrapEl.classList.toggle('open', open);
+  // 라벨 없이 화살표만 — 여는 쪽(왼쪽), 접는 쪽(오른쪽)을 그대로 가리킨다.
+  toggleEl.textContent = open ? '▶' : '◀';
+  toggleEl.title = open ? '북마크 사이드바 접기' : '북마크 사이드바 열기';
+  toggleEl.setAttribute('aria-label', toggleEl.title);
+  toggleEl.setAttribute('aria-expanded', String(open));
+  pushPage(open);
+}
+
+async function setPanelOpen(open) {
+  panelEl.hidden = !open;
+  renderPanel();
+  await chrome.storage.local.set({ [PANEL_OPEN_KEY]: open });
+}
+
+toggleEl.addEventListener('click', () => setPanelOpen(panelEl.hidden));
+
+/* ---------------- 북마크 ---------------- */
+
+let current = null; // 현재 페이지에서 파싱한 거래소 검색 정보
 let savedBookmark = null; // 현재 검색이 이미 저장돼 있다면 그 북마크
 let renderedUrl; // 폼에 이미 반영해 둔 URL (불필요한 재렌더 방지)
-let panelWindowId; // 이 사이드 패널이 속한 창
 
 async function getBookmarks() {
   const data = await chrome.storage.local.get(STORAGE_KEY);
@@ -37,17 +194,9 @@ function formatDate(ts) {
   });
 }
 
-/**
- * 이미 거래소를 보고 있다면 그 탭에서 바로 이동하고,
- * 다른 페이지를 보고 있었다면 그 페이지를 잃지 않도록 새 탭에서 연다.
- */
-async function openBookmark(bookmark) {
-  const [tab] = await chrome.tabs.query({ active: true, windowId: panelWindowId });
-  if (tab && parseTradeUrl(tab.url ?? '')) {
-    await chrome.tabs.update(tab.id, { url: bookmark.url });
-  } else {
-    await chrome.tabs.create({ url: bookmark.url, windowId: panelWindowId });
-  }
+/** 패널이 거래소 안에서만 살아 있으므로 항상 이 탭에서 그대로 이동한다. */
+function openBookmark(bookmark) {
+  location.assign(bookmark.url);
 }
 
 function renderList(bookmarks) {
@@ -124,7 +273,7 @@ async function renderForm() {
   syncButton();
 
   if (!current) {
-    setStatus('PoE 거래소 검색 페이지를 열면 여기에 저장할 수 있습니다.', 'error');
+    setStatus('거래소 검색 페이지에서 저장할 수 있습니다.', 'error');
     formEl.hidden = true;
     return;
   }
@@ -153,10 +302,9 @@ async function renderForm() {
   syncButton();
 }
 
-/** 현재 탭을 다시 읽어 폼을 갱신한다. URL이 그대로면 입력 중인 이름을 보존한다. */
+/** 현재 주소를 다시 읽어 폼을 갱신한다. URL이 그대로면 입력 중인 이름을 보존한다. */
 async function refresh({ force = false } = {}) {
-  const [tab] = await chrome.tabs.query({ active: true, windowId: panelWindowId });
-  current = parseTradeUrl(tab?.url ?? '');
+  current = parseTradeUrl(location.href);
 
   const key = current ? current.url : null;
   if (!force && key === renderedUrl) return;
@@ -185,6 +333,7 @@ formEl.addEventListener('submit', async (event) => {
     updated = bookmarks.map((b) => (b.id === existing.id ? record : b));
     message = `이름을 "${name}"(으)로 바꿨습니다.`;
   } else {
+    const built = pending && pending.url === current.url ? pending : null;
     record = {
       id: crypto.randomUUID(),
       title: name,
@@ -194,10 +343,11 @@ formEl.addEventListener('submit', async (event) => {
       searchId: current.searchId,
       createdAt: Date.now(),
       // 8모드 빌더로 만든 검색이면 인게임 정규식을 같이 저장한다.
-      ...(pending && pending.url === current.url ? { regex: pending.regex } : {}),
+      ...(built ? { regex: built.regex } : {}),
     };
     updated = [record, ...bookmarks];
     message = '북마크를 추가했습니다.';
+    if (built) await clearPending();
   }
 
   // 저장 전에 상태를 맞춰 둬야 storage.onChanged가 폼을 다시 그리지 않고,
@@ -208,17 +358,18 @@ formEl.addEventListener('submit', async (event) => {
   await setBookmarks(updated);
 });
 
-// 탭 전환
-chrome.tabs.onActivated.addListener((info) => {
-  if (info.windowId === panelWindowId) refresh();
-});
+// 거래소는 SPA라 주소만 바뀌는 이동이 잦다. 이벤트로 다 잡히지 않아 주기적으로도 확인한다.
+let lastHref = location.href;
+function watchUrl() {
+  if (location.href === lastHref) return;
+  lastHref = location.href;
+  refresh();
+}
+window.addEventListener('popstate', watchUrl);
+window.addEventListener('hashchange', watchUrl);
+setInterval(watchUrl, 500);
 
-// 주소 변경 — 거래소는 SPA라 검색을 다시 실행해도 onUpdated로 들어온다.
-chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
-  if (changeInfo.url && tab.active && tab.windowId === panelWindowId) refresh();
-});
-
-// 다른 창의 패널에서 추가/삭제한 내용도 즉시 반영한다.
+// 다른 탭에서 추가/삭제한 내용도 즉시 반영한다.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !changes[STORAGE_KEY]) return;
   const bookmarks = changes[STORAGE_KEY].newValue ?? [];
@@ -233,29 +384,30 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 /* ---------------- 16T 8모드 검색 만들기 ---------------- */
 
-const BUILDER_KEY = 'builder';
-const LEAGUE_CACHE_KEY = 'leagues';
-// DEFAULT_ORIGIN / REGEX_MAX / buildRegex / buildSearchQuery 는 trade-query.js 전역
-const FALLBACK_LEAGUES =[{ id: 'Allflame', text: '올플레임' }, { id: 'Standard', text: 'Standard' }];
+// DEFAULT_LEAGUE / REGEX_MAX / buildRegex / buildSearchQuery 는 trade-query.js 전역
+const FALLBACK_LEAGUES = [{ id: 'Allflame', text: '올플레임' }, { id: 'Standard', text: 'Standard' }];
 // 계정 한도가 5초당 3회다. 버튼 연타로 한도를 태우지 않도록 최소 간격을 둔다.
 const SEARCH_COOLDOWN_MS = 2500;
+// 만든 검색으로 이동하면 페이지가 다시 로드된다. 그 사이 정규식을 잃지 않도록
+// 스토리지에 잠깐 맡겨 두고, 오래된 값은 무시한다.
+const PENDING_TTL_MS = 10 * 60 * 1000;
 
-const builderEl = document.getElementById('builder');
-const builderToggle = document.getElementById('builder-toggle');
-const builderArrow = document.getElementById('builder-arrow');
-const leagueEl = document.getElementById('league');
-const modSearchEl = document.getElementById('mod-search');
-const modListEl = document.getElementById('mod-list');
-const regexOutEl = document.getElementById('regex-out');
-const regexLenEl = document.getElementById('regex-len');
-const runSearchBtn = document.getElementById('run-search');
-const builderStatusEl = document.getElementById('builder-status');
-const presetEl = document.getElementById('preset');
-const presetDescEl = document.getElementById('preset-desc');
+const builderEl = $('builder');
+const builderToggle = $('builder-toggle');
+const builderArrow = $('builder-arrow');
+const leagueEl = $('league');
+const modSearchEl = $('mod-search');
+const modListEl = $('mod-list');
+const regexOutEl = $('regex-out');
+const regexLenEl = $('regex-len');
+const runSearchBtn = $('run-search');
+const builderStatusEl = $('builder-status');
+const presetEl = $('preset');
+const presetDescEl = $('preset-desc');
 
 const selected = new Set(); // 거를 모드 키
 let lastSearchAt = 0;
-let pending = null; // 방금 만든 검색 {url, title, regex}
+let pending = null; // 방금 만든 검색 {url, title, regex, at}
 
 const modKey = (mod) => mod.ids.join(',');
 const selectedMods = () => MAP_MODS.filter((m) => selected.has(modKey(m)));
@@ -266,11 +418,20 @@ function setBuilderStatus(message, kind) {
   builderStatusEl.hidden = !message;
 }
 
-/** 현재 탭이 거래소면 그 서버를, 아니면 카카오 서버를 쓴다. */
-async function tradeOrigin() {
-  const [tab] = await chrome.tabs.query({ active: true, windowId: panelWindowId });
-  const parsed = parseTradeUrl(tab?.url ?? '');
-  return parsed ? new URL(parsed.url).origin : DEFAULT_ORIGIN;
+async function loadPending() {
+  const saved = (await chrome.storage.local.get(PENDING_KEY))[PENDING_KEY];
+  if (!saved || Date.now() - saved.at > PENDING_TTL_MS) return null;
+  return saved;
+}
+
+async function savePending(value) {
+  pending = value;
+  await chrome.storage.local.set({ [PENDING_KEY]: value });
+}
+
+async function clearPending() {
+  pending = null;
+  await chrome.storage.local.remove(PENDING_KEY);
 }
 
 function renderMods() {
@@ -330,7 +491,8 @@ async function saveBuilderState() {
   });
 }
 
-async function loadLeagues(origin) {
+async function loadLeagues() {
+  const origin = location.origin;
   const cached = (await chrome.storage.local.get(LEAGUE_CACHE_KEY))[LEAGUE_CACHE_KEY];
   if (cached && cached.origin === origin && Date.now() - cached.at < 24 * 3600 * 1000) {
     return cached.leagues;
@@ -354,7 +516,7 @@ async function runSearch() {
     return;
   }
 
-  const origin = await tradeOrigin();
+  const origin = location.origin;
   // 리그 목록을 못 불러온 상황에서도 빈 주소로 요청하지 않도록 한다.
   const league = leagueEl.value || DEFAULT_LEAGUE;
   const query = buildSearchQuery({ modIds: mods.flatMap((m) => m.ids) });
@@ -388,16 +550,15 @@ async function runSearch() {
     }
 
     const url = `${origin}/trade/search/${encodeURIComponent(league)}/${body.id}`;
-    pending = {
+    // 이동하면 이 스크립트도 다시 시작하므로 먼저 맡겨 두고 움직인다.
+    await savePending({
       url,
       title: `16T 8모드 (${mods.length}개 거름)`,
       regex: buildRegex(mods),
-    };
-    setBuilderStatus(`검색 결과 ${body.total ?? 0}개. 위에서 이름을 정해 저장하세요.`, 'ok');
-
-    const [tab] = await chrome.tabs.query({ active: true, windowId: panelWindowId });
-    if (tab && parseTradeUrl(tab.url ?? '')) await chrome.tabs.update(tab.id, { url });
-    else await chrome.tabs.create({ url, windowId: panelWindowId });
+      at: Date.now(),
+    });
+    setBuilderStatus(`검색 결과 ${body.total ?? 0}개. 검색 결과로 이동합니다…`, 'ok');
+    location.assign(url);
   } catch (e) {
     setBuilderStatus(`요청 중 오류: ${e.message}`, 'error');
   } finally {
@@ -446,7 +607,7 @@ presetEl.addEventListener('change', () => {
   presetDescEl.textContent = preset?.desc ?? '';
 });
 
-document.getElementById('preset-none').addEventListener('click', () => {
+$('preset-none').addEventListener('click', () => {
   selected.clear();
   presetEl.value = '';
   presetDescEl.textContent = '';
@@ -456,7 +617,7 @@ document.getElementById('preset-none').addEventListener('click', () => {
   setBuilderStatus('', null);
 });
 
-document.getElementById('copy-regex').addEventListener('click', async () => {
+$('copy-regex').addEventListener('click', async () => {
   if (!regexOutEl.value) return;
   await navigator.clipboard.writeText(regexOutEl.value);
   setBuilderStatus('정규식을 복사했습니다.', 'ok');
@@ -480,7 +641,7 @@ async function initBuilder() {
     presetEl.append(opt);
   }
 
-  const leagues = await loadLeagues(await tradeOrigin());
+  const leagues = await loadLeagues();
   leagueEl.textContent = '';
   for (const l of leagues) {
     const opt = document.createElement('option');
@@ -495,7 +656,14 @@ async function initBuilder() {
 }
 
 (async function init() {
-  panelWindowId = (await chrome.windows.getCurrent()).id;
+  await applyStyles();
+
+  // 기본은 접힌 상태 — 거래소 화면을 좁히지 않도록 손잡이만 띄운다.
+  const stored = await chrome.storage.local.get(PANEL_OPEN_KEY);
+  panelEl.hidden = stored[PANEL_OPEN_KEY] !== true;
+  renderPanel();
+
+  pending = await loadPending();
   renderList(await getBookmarks());
   await refresh({ force: true });
   await initBuilder();
