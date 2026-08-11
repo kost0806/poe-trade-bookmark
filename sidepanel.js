@@ -10,6 +10,8 @@ const emptyEl = document.getElementById('empty');
 const countEl = document.getElementById('count');
 
 let current = null; // 현재 탭에서 파싱한 거래소 검색 정보
+let renderedUrl; // 폼에 이미 반영해 둔 URL (불필요한 재렌더 방지)
+let panelWindowId; // 이 사이드 패널이 속한 창
 
 async function getBookmarks() {
   const data = await chrome.storage.local.get(STORAGE_KEY);
@@ -32,6 +34,19 @@ function formatDate(ts) {
     month: '2-digit',
     day: '2-digit',
   });
+}
+
+/**
+ * 이미 거래소를 보고 있다면 그 탭에서 바로 이동하고,
+ * 다른 페이지를 보고 있었다면 그 페이지를 잃지 않도록 새 탭에서 연다.
+ */
+async function openBookmark(bookmark) {
+  const [tab] = await chrome.tabs.query({ active: true, windowId: panelWindowId });
+  if (tab && parseTradeUrl(tab.url ?? '')) {
+    await chrome.tabs.update(tab.id, { url: bookmark.url });
+  } else {
+    await chrome.tabs.create({ url: bookmark.url, windowId: panelWindowId });
+  }
 }
 
 function renderList(bookmarks) {
@@ -58,9 +73,7 @@ function renderList(bookmarks) {
     } · ${formatDate(bookmark.createdAt)}`;
 
     open.append(title, meta);
-    open.addEventListener('click', () => {
-      chrome.tabs.create({ url: bookmark.url });
-    });
+    open.addEventListener('click', () => openBookmark(bookmark));
 
     const del = document.createElement('button');
     del.type = 'button';
@@ -70,7 +83,6 @@ function renderList(bookmarks) {
     del.addEventListener('click', async () => {
       const remaining = (await getBookmarks()).filter((b) => b.id !== bookmark.id);
       await setBookmarks(remaining);
-      renderList(remaining);
     });
 
     li.append(open, del);
@@ -78,12 +90,12 @@ function renderList(bookmarks) {
   }
 }
 
-async function initCurrentTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  current = parseTradeUrl(tab?.url ?? '');
+async function renderForm() {
+  addBtn.disabled = false;
+  addBtn.textContent = '북마크 추가';
 
   if (!current) {
-    setStatus('PoE 거래소 검색 페이지가 아닙니다.', 'error');
+    setStatus('PoE 거래소 검색 페이지를 열면 여기에 저장할 수 있습니다.', 'error');
     formEl.hidden = true;
     return;
   }
@@ -94,12 +106,30 @@ async function initCurrentTab() {
     return;
   }
 
-  setStatus('', null);
   formEl.hidden = false;
-  titleEl.value = suggestTitle(current);
   targetEl.textContent = current.url;
-  titleEl.focus();
-  titleEl.select();
+
+  const saved = (await getBookmarks()).find((b) => b.url === current.url);
+  if (saved) {
+    setStatus('이미 저장된 검색입니다.', null);
+    titleEl.value = saved.title;
+    addBtn.disabled = true;
+    addBtn.textContent = '저장됨';
+  } else {
+    setStatus('', null);
+    titleEl.value = suggestTitle(current);
+  }
+}
+
+/** 현재 탭을 다시 읽어 폼을 갱신한다. URL이 그대로면 입력 중인 이름을 보존한다. */
+async function refresh({ force = false } = {}) {
+  const [tab] = await chrome.tabs.query({ active: true, windowId: panelWindowId });
+  current = parseTradeUrl(tab?.url ?? '');
+
+  const key = current ? current.url : null;
+  if (!force && key === renderedUrl) return;
+  renderedUrl = key;
+  await renderForm();
 }
 
 formEl.addEventListener('submit', async (event) => {
@@ -108,7 +138,7 @@ formEl.addEventListener('submit', async (event) => {
 
   const bookmarks = await getBookmarks();
   if (bookmarks.some((b) => b.url === current.url)) {
-    setStatus('이미 저장된 검색입니다.', 'error');
+    await renderForm();
     return;
   }
 
@@ -122,16 +152,36 @@ formEl.addEventListener('submit', async (event) => {
     createdAt: Date.now(),
   };
 
-  const updated = [bookmark, ...bookmarks];
-  await setBookmarks(updated);
-  renderList(updated);
-
-  setStatus('북마크를 추가했습니다.', 'ok');
+  // 저장 결과는 storage.onChanged에서 목록에 반영된다.
   addBtn.disabled = true;
-  addBtn.textContent = '추가됨';
+  addBtn.textContent = '저장됨';
+  setStatus('북마크를 추가했습니다.', 'ok');
+  await setBookmarks([bookmark, ...bookmarks]);
+});
+
+// 탭 전환
+chrome.tabs.onActivated.addListener((info) => {
+  if (info.windowId === panelWindowId) refresh();
+});
+
+// 주소 변경 — 거래소는 SPA라 검색을 다시 실행해도 onUpdated로 들어온다.
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+  if (changeInfo.url && tab.active && tab.windowId === panelWindowId) refresh();
+});
+
+// 다른 창의 패널에서 추가/삭제한 내용도 즉시 반영한다.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !changes[STORAGE_KEY]) return;
+  const bookmarks = changes[STORAGE_KEY].newValue ?? [];
+  renderList(bookmarks);
+
+  // 현재 검색의 저장 여부가 버튼 상태와 어긋나면 폼을 다시 그린다.
+  const saved = current ? bookmarks.some((b) => b.url === current.url) : false;
+  if (saved !== addBtn.disabled) renderForm();
 });
 
 (async function init() {
+  panelWindowId = (await chrome.windows.getCurrent()).id;
   renderList(await getBookmarks());
-  await initCurrentTab();
+  await refresh({ force: true });
 })();
