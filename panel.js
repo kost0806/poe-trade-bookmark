@@ -170,6 +170,7 @@ toggleEl.addEventListener('click', () => setPanelOpen(panelEl.hidden));
 let current = null; // 현재 페이지에서 파싱한 거래소 검색 정보
 let savedBookmark = null; // 현재 검색이 이미 저장돼 있다면 그 북마크
 let renderedUrl; // 폼에 이미 반영해 둔 URL (불필요한 재렌더 방지)
+let rendering = false; // 폼을 그리는 중 (watchSearch가 끼어들지 않게)
 
 async function getBookmarks() {
   const data = await chrome.storage.local.get(STORAGE_KEY);
@@ -263,25 +264,50 @@ const FILL_TRIES = 8;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+let filledName = null; // 우리가 채워 둔 추천 이름
+let nameTouched = false; // 사용자가 이름 칸을 직접 고쳤는지
+
 /**
  * 검색창·필터에서 뽑은 이름으로 기본값을 바꿔 준다. (titleFromSearchPane은 search-name.js)
  * 끝까지 못 뽑으면 검색 ID로 만든 이름이 그대로 남는다.
  */
 async function fillTitle(parsed) {
-  const fallback = suggestTitle(parsed);
-
   for (let i = 0; i < FILL_TRIES; i++) {
     // 그 사이 페이지가 바뀌었거나 사용자가 이름을 고쳤으면 건드리지 않는다.
-    if (current?.url !== parsed.url || titleEl.value !== fallback) return;
+    if (current?.url !== parsed.url || nameTouched) return;
 
     const title = titleFromSearchPane(document);
     if (title) {
+      filledName = title;
       titleEl.value = title;
       syncButton();
       return;
     }
     await sleep(FILL_RETRY_MS);
   }
+}
+
+/**
+ * 검색 내용이 바뀌면 추천 이름을 다시 채운다.
+ *
+ * 거래소는 조건이 같으면 같은 검색 ID를 돌려주므로, 다시 검색해도 주소가 그대로일
+ * 수 있다. 주소만 보고 있으면 그때 추천을 놓친다. 그래서 폼에서 뽑은 이름이
+ * 달라졌는지도 같이 본다. 검색이 바뀐 것이므로 입력해 둔 이름보다 우선한다.
+ */
+function watchSearch() {
+  if (rendering || formEl.hidden || savedBookmark) return;
+  if (pending && pending.url === current?.url) return;
+  // 아직 한 번도 못 채웠으면 사용자가 적어 둔 이름을 건드리지 않는다.
+  // (거래소가 폼을 채우는 중일 수 있어 '없음 → 있음'은 검색이 바뀐 게 아니다.)
+  if (filledName === null) return;
+
+  const name = titleFromSearchPane(document);
+  if (!name || name === filledName) return;
+
+  filledName = name;
+  titleEl.value = name;
+  nameTouched = false;
+  syncButton();
 }
 
 /** 저장된 검색이면 '이름 변경', 아니면 '북마크 추가'. 바뀔 내용이 없으면 잠근다. */
@@ -298,6 +324,9 @@ function syncButton() {
 
 async function renderForm() {
   savedBookmark = null;
+  // 폼을 새로 그리는 동안에는 입력 흔적과 채워 둔 이름을 초기화한다.
+  filledName = null;
+  nameTouched = false;
   syncButton();
 
   if (!current) {
@@ -341,10 +370,20 @@ async function refresh({ force = false } = {}) {
   const key = current ? current.url : null;
   if (!force && key === renderedUrl) return;
   renderedUrl = key;
-  await renderForm();
+
+  // 그리는 중에는 watchSearch가 끼어들지 않게 한다.
+  rendering = true;
+  try {
+    await renderForm();
+  } finally {
+    rendering = false;
+  }
 }
 
-titleEl.addEventListener('input', syncButton);
+titleEl.addEventListener('input', () => {
+  nameTouched = true;
+  syncButton();
+});
 
 formEl.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -399,7 +438,10 @@ function watchUrl() {
 }
 window.addEventListener('popstate', watchUrl);
 window.addEventListener('hashchange', watchUrl);
-setInterval(watchUrl, 500);
+setInterval(() => {
+  watchUrl();
+  watchSearch();
+}, 500);
 
 // 다른 탭에서 추가/삭제한 내용도 즉시 반영한다.
 chrome.storage.onChanged.addListener((changes, area) => {
