@@ -1,0 +1,182 @@
+:root {
+  --bg: #191614;
+  --card: #221f1c;
+  --border: #3b342c;
+  --text: #e8e0d0;
+  --muted: #9a8f7d;
+  --accent: #af6025;
+  --accent-hover: #c97430;
+  --danger: #8c3b3b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 340px;
+  margin: 0;
+  padding: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 "Segoe UI", "Malgun Gothic", sans-serif;
+}
+
+header h1 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.card:last-child {
+  margin-bottom: 0;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.count {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  background: #15120f;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+}
+
+#add-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+#add-btn:hover {
+  background: var(--accent-hover);
+}
+
+#add-btn:disabled {
+  background: #4a423a;
+  cursor: default;
+}
+
+.status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.status.error {
+  color: #d08a6a;
+}
+
+.status.ok {
+  color: #8fb56a;
+}
+
+.target {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.list li:last-child {
+  border-bottom: none;
+}
+
+.item-open {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  padding: 2px 4px;
+}
+
+.item-open:hover .item-title {
+  color: var(--accent-hover);
+}
+
+.item-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-meta {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.item-delete {
+  flex: none;
+  padding: 3px 7px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.item-delete:hover {
+  background: var(--danger);
+  color: #fff;
+}

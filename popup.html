@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>PoE Trade Bookmark</h1>
+    </header>
+
+    <section id="capture" class="card">
+      <p id="status" class="status">현재 탭을 확인하는 중…</p>
+
+      <form id="add-form" hidden>
+        <label for="title">이름</label>
+        <input
+          id="title"
+          type="text"
+          maxlength="80"
+          autocomplete="off"
+          placeholder="북마크 이름"
+        />
+        <p id="target" class="target"></p>
+        <button type="submit" id="add-btn">북마크 추가</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>저장된 북마크 <span id="count" class="count"></span></h2>
+      <ul id="list" class="list"></ul>
+      <p id="empty" class="status" hidden>아직 저장된 북마크가 없습니다.</p>
+    </section>
+
+    <script src="trade-url.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

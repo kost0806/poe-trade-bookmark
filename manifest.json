@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "PoE Trade Bookmark",
+  "version": "0.1.0",
+  "description": "Path of Exile 1 거래소 검색 결과를 북마크로 저장합니다.",
+  "permissions": ["storage", "tabs"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PoE Trade Bookmark"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
