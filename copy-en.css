@@ -1,0 +1,71 @@
+/*
+ * 검색 결과에 붙는 EN 복사 단추.
+ *
+ * 패널과 달리 이 단추는 거래소 DOM 안에 그대로 들어가므로 Shadow DOM으로 감쌀 수
+ * 없다. 대신 선택자를 우리 클래스로만 한정해 거래소 스타일은 건드리지 않는다.
+ *
+ * 기준은 결과 줄(`.results [data-id]`)이다. 줄의 클래스 이름(.row)에 기대지 않아
+ * copy-en.js의 예비 선택자로 붙은 단추에도 그대로 먹고, 거래소의 button 규칙에
+ * 밀리지 않을 만큼 우선순위도 확보된다.
+ */
+
+.results [data-id] .ptb-en-copy {
+  /* 평소에는 숨겨 두고 그 줄에 마우스를 올렸을 때만 보여 준다. */
+  display: none;
+
+  /* 아이템 그림 오른쪽 아래 빈자리. 기준점은 줄이다(copy-en.js에서 보장한다). */
+  position: absolute;
+  left: 86px;
+  bottom: 8px;
+  z-index: 5;
+
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 20px;
+  margin: 0;
+  padding: 0 6px;
+
+  background: #221f1c;
+  border: 1px solid #3b342c;
+  border-radius: 4px;
+  color: #af6025;
+
+  font: 600 11px/1 "Segoe UI", "Malgun Gothic", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+/* 마우스를 올린 줄, 그리고 마우스가 떠난 뒤에도 진행/결과를 보여 주는 동안. */
+.results [data-id]:hover .ptb-en-copy,
+.results [data-id] .ptb-en-copy:disabled,
+.results [data-id] .ptb-en-copy.ptb-ok,
+.results [data-id] .ptb-en-copy.ptb-error {
+  display: inline-flex;
+}
+
+.results [data-id] .ptb-en-copy:hover {
+  opacity: 1;
+  border-color: #af6025;
+  background: #2c2722;
+}
+
+.results [data-id] .ptb-en-copy:disabled {
+  cursor: default;
+  color: #9a8f7d;
+}
+
+.results [data-id] .ptb-en-copy.ptb-ok {
+  opacity: 1;
+  color: #8fb56a;
+  border-color: #8fb56a;
+}
+
+.results [data-id] .ptb-en-copy.ptb-error {
+  opacity: 1;
+  color: #d08a6a;
+  border-color: #8c3b3b;
+}
