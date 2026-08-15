@@ -64,7 +64,7 @@ const MAP_MODS = [
   { ids: ["explicit.stat_2450628570"], regex: "스킬로", group: "방어 약화", affix: "- 의심", text: "플레이어가 비-저주 오라 스킬로 받는 효과 60% 감소" },
   { ids: ["explicit.stat_3376488707"], regex: "모든.저", group: "방어 약화", affix: "- 노출", rec: true, text: "플레이어의 모든 저항 최대치 (-12—-9)%" },
   { ids: ["explicit.stat_3667574329"], regex: "어의.정", group: "방어 약화", affix: "- 비정밀함", rec: true, text: "플레이어의 정확도 25% 감폭" },
-  { ids: ["explicit.stat_2588474575"], regex: "사로잡", group: "보스 강화", affix: "예속된", text: "고유 보스가 사로잡힘" },
+  { ids: ["explicit.stat_2588474575"], regex: "가.사로잡", group: "보스 강화", affix: "예속된", text: "고유 보스가 사로잡힘" },
   { ids: ["explicit.stat_124877078", "explicit.stat_2109106920"], regex: "공격.및", group: "보스 강화", affix: "대군주의", text: "고유 보스가 주는 피해 25% 증가\n고유 보스의 공격 및 시전 속도 30% 증가" },
   { ids: ["explicit.stat_1959158336", "explicit.stat_3040667106"], regex: "보스의.생", group: "보스 강화", affix: "거신의", text: "고유 보스의 생명력 35% 증가\n고유 보스의 효과 범위 70% 증가" },
   { ids: ["explicit.stat_799271621"], regex: "에.고유", group: "보스 강화", affix: "이중", text: "지역에 고유 보스 2마리 등장" },
