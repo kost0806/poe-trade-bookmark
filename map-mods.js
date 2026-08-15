@@ -51,7 +51,7 @@ const MAP_MODS = [
   { ids: ["explicit.stat_95249895", "explicit.stat_1041951480"], regex: "증폭", group: "몬스터 강화", affix: "변함없는", text: "몬스터의 생명력 (25—30)% 증폭\n몬스터 기절 면역\n몬스터의 생명력 (40—49)% 증폭" },
   { ids: ["explicit.stat_3183973644"], regex: "연쇄", group: "몬스터 강화", affix: "연쇄의", text: "몬스터의 스킬 2회 추가 연쇄" },
   { ids: ["explicit.stat_2306522833", "explicit.stat_1913583994", "explicit.stat_2488361432"], regex: "공격.속", group: "몬스터 강화", affix: "쾌속의", text: "몬스터의 이동 속도 (25—30)% 증가\n몬스터의 공격 속도 (35—45)% 증가\n몬스터의 시전 속도 (35—45)% 증가" },
-  { ids: ["explicit.stat_1588049749"], regex: "터의.정", group: "몬스터 강화", affix: "- 수렁", text: "몬스터의 정확도 50% 증가" },
+  { ids: ["explicit.stat_1588049749"], regex: "터의.정", group: "몬스터 강화", affix: "- 수렁", text: "몬스터의 정확도 50% 증가\n플레이어가 방지하는 억제된 주문 피해 -20%" },
   { ids: ["explicit.stat_962720646"], regex: "방해", group: "몬스터 강화", affix: "- 저해", text: "몬스터의 주문 명중 시 이동 방해 유발" },
   { ids: ["explicit.stat_2138205941"], regex: "제.확", group: "몬스터 강화", affix: "억제하는", rec: true, text: "몬스터의 주문 피해 억제 확률 +60%" },
   { ids: ["explicit.stat_2753083623", "explicit.stat_57326096"], regex: "배율", group: "몬스터 강화", affix: "- 치명성", text: "몬스터의 치명타 확률 (360—400)% 증가\n몬스터의 치명타 피해 배율 +(41—45)%" },
