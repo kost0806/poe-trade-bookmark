@@ -19,12 +19,12 @@ const AFFIX_COUNT_ID = 'pseudo.pseudo_number_of_affix_mods';
 const INFLUENCE_IDS = [
   'implicit.stat_1792283443|1', // 쉐이퍼의 영향
   'implicit.stat_1792283443|2', // 엘더의 영향
-  'implicit.stat_3624393862|1', // 속박자 점령
-  'implicit.stat_3624393862|2', // 근절자 점령
-  'implicit.stat_3624393862|3', // 압제자 점령
+  'implicit.stat_3624393862|1', // 조종자 점령
+  'implicit.stat_3624393862|2', // 박멸자 점령
+  'implicit.stat_3624393862|3', // 위압자 점령
   'implicit.stat_3624393862|4', // 정화자 점령
   'implicit.stat_1795443614', // 엘더·쉐이퍼·정복자 전부
-  'implicit.stat_2696470877', // 근원의 기억
+  'implicit.stat_2696470877', // 태초자의 기억
 ];
 
 // 거래 옵션 — 'securable'이 거래소의 '즉시 구입'이다.

@@ -32,7 +32,7 @@ const MAP_MODS = [
   { ids: ["explicit.stat_272758639", "explicit.stat_3729221884"], regex: "방어도", group: "기타", affix: "- 녹", text: "플레이어의 방어도 30% 감폭\n플레이어의 막기 확률 40% 감소" },
   { ids: ["explicit.stat_2312028586"], regex: "어의.효", group: "기타", affix: "- 무기력", text: "플레이어의 효과 범위 25% 감폭" },
   { ids: ["explicit.stat_816367946"], regex: "모든.몬", group: "몬스터 강화", affix: "불태우는", text: "모든 몬스터의 적중 피해가 항상 점화 유발" },
-  { ids: ["explicit.stat_1106651798", "explicit.stat_798009319", "explicit.stat_798009319"], regex: "밑으로", group: "몬스터 강화", affix: "폭주", text: "몬스터 도발 면역\n몬스터의 동작 속도가 기본 수치 밑으로 내려가지 않음\n몬스터의 이동 속도가 기본 수치 밑으로 내려가지 않음" },
+  { ids: ["explicit.stat_1106651798", "explicit.stat_798009319"], regex: "밑으로", group: "몬스터 강화", affix: "폭주", text: "몬스터 도발 면역\n몬스터의 동작 속도가 기본 수치 밑으로 내려가지 않음\n몬스터의 이동 속도가 기본 수치 밑으로 내려가지 않음" },
   { ids: ["explicit.stat_1890519597"], regex: "터.피해", group: "몬스터 강화", affix: "야만적인", text: "몬스터 피해 (22—25)% 증가" },
   { ids: ["explicit.stat_3448216135"], regex: "냉기.속", group: "몬스터 강화", affix: "동결의", text: "몬스터가 (90—110)%의 추가 물리 피해를 냉기 속성으로 가함" },
   { ids: ["explicit.stat_3416853625"], regex: "번개.속", group: "몬스터 강화", affix: "감전의", text: "몬스터가 (90—110)%의 추가 물리 피해를 번개 속성으로 가함" },
