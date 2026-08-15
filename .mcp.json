@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "poedb": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:/Users/kimmi/repos/poedb-mcp/dist/index.js"
+      ],
+      "env": {}
+    }
+  }
+}
