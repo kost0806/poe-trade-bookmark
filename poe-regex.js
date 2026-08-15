@@ -1,20 +1,26 @@
 /**
  * 인게임 검색창의 정규식 엔진.
  *
- * 이 파일은 자바스크립트의 RegExp를 쓰지 않고 패턴을 직접 해석한다. 게임이 받아
- * 주는 문법이 자바스크립트보다 좁기 때문이다. RegExp에 그대로 넘기면 게임에서는
- * 통하지 않는 패턴(전방 탐색 등)이 확장에서만 멀쩡히 동작해서, "걸린다"고 표시한
- * 지도가 정작 게임 안에서는 걸리지 않는 어긋남이 생긴다. 여기서는 지원하지 않는
- * 문법을 조용히 통과시키지 않고 오류로 돌려준다.
+ * 자바스크립트의 RegExp를 쓰지 않고 패턴을 직접 해석한다. 게임의 엔진과 규칙이
+ * 다른 자리가 있어서, RegExp로 맞추면 확장이 "걸린다"고 표시한 지도가 정작
+ * 인게임 필터에서는 안 걸리는 어긋남이 생기기 때문이다. 다른 자리는 세 곳이다 —
+ * 줄 단위 매칭, 글자 그대로 먼저 찾기, 그리고 받지 않는 문법.
  *
  * 대상은 창고·소지품·판매상·지도 장치의 검색칸이다. 매칭 대상 문구는 아이템을
  * Ctrl+C 했을 때 나오는 전문이고, 거래소 API의 extended.text와 같은 값이다
  * (background.js 참고). 그래서 아이템 이름과 '아이템 종류: 지도' 같은 속성 줄도
  * 매칭 대상에 들어간다 — 모드 문구만 놓고 맞춰 보면 안 된다.
  *
+ * 게임이 쓰는 엔진은 MSVC의 std::regex(ECMAScript 문법)다. 검색칸에서 곧바로 튀어
+ * 나온 예외 대화상자의 문구가 microsoft/STL의 것과 한 글자도 다르지 않다
+ * ('regex_error(error_complexity)', https://www.pathofexile.com/forum/view-thread/3195613).
+ * 그래서 전방 탐색은 되고 후방 탐색은 안 되며, 되추적이 터지는 패턴은 게임을
+ * 멈춘다. 여기서 문법을 정할 때의 근거가 대체로 이것이다.
+ *
  * 가장 중요한 규칙: 인게임 엔진은 언제나 한 줄씩 맞춘다. 여러 줄을 한 덩어리로
  * 보지 않으므로 '.'은 줄바꿈을 넘지 못하고 '^'와 '$'는 줄마다 걸린다. 그래서 한
- * 패턴이 서로 다른 두 모드 줄에 걸쳐 매칭되는 일이 없다.
+ * 패턴이 서로 다른 두 모드 줄에 걸쳐 매칭되는 일이 없다. (C++11의 std::regex에는
+ * 여러 줄 모드가 아예 없어서, GGG가 줄을 따로 넣어 주는 것으로 보인다.)
  *   https://www.pathofexile.com/forum/view-thread/3305826
  *   ("The regex engine always performs a single line match ... (?m) doesn't do anything")
  */
@@ -128,20 +134,47 @@ function splitAlternatives(pattern) {
  *   { type: 'start' } / { type: 'end' } ^ $
  */
 
-/** 패턴 문법 오류. 어디서 틀렸는지 자리와 함께 알린다. */
+/**
+ * 패턴을 해석하지 못했을 때. 어디서 왜 막혔는지 함께 알린다.
+ *
+ * kind가 둘인 이유는 게임의 대응이 다르기 때문이다.
+ *  - 'syntax'      문법이 깨진 패턴. 게임은 이런 패턴을 글자 그대로 찾으므로
+ *                  여기서도 그렇게 한다(compileQuery 참고). 오류가 아니라 안내다.
+ *  - 'unsupported' 게임에서 어떻게 되는지 알 수 없는 문법. 찍지 않고 물러선다.
+ */
 class PoeRegexError extends Error {
-  constructor(message, index) {
+  constructor(message, index, kind = 'syntax') {
     super(message);
     this.name = 'PoeRegexError';
     this.index = index;
+    this.kind = kind;
   }
 }
+
+/*
+ * 축약 클래스. poe.re가 만들어 인게임에 그대로 붙여 넣는 문자열에 '\d'가 쓰이므로
+ * 게임이 받아 준다는 것이 확인된다(veiset/poe-vendor-string의 OutputString.ts).
+ * ECMAScript 문법이니 나머지도 함께 있다.
+ */
+const DIGIT_RANGES = [['0', '9']];
+const WORD_RANGES = [['a', 'z'], ['A', 'Z'], ['0', '9'], ['_', '_']];
+// 줄바꿈은 어차피 어떤 명령으로도 먹지 않는다(consumes 참고).
+const SPACE_RANGES = [[' ', ' '], ['\t', '\t'], ['\r', '\r'], ['\f', '\f'], ['\v', '\v']];
+
+const SHORTHAND = {
+  d: { negated: false, ranges: DIGIT_RANGES },
+  D: { negated: true, ranges: DIGIT_RANGES },
+  w: { negated: false, ranges: WORD_RANGES },
+  W: { negated: true, ranges: WORD_RANGES },
+  s: { negated: false, ranges: SPACE_RANGES },
+  S: { negated: true, ranges: SPACE_RANGES },
+};
 
 function parsePattern(src) {
   let i = 0;
 
-  const fail = (message) => {
-    throw new PoeRegexError(message, i);
+  const fail = (message, kind = 'syntax') => {
+    throw new PoeRegexError(message, i, kind);
   };
 
   const peek = () => src[i];
@@ -244,23 +277,34 @@ function parsePattern(src) {
     const ch = src[i];
 
     if (ch === '(') {
-      /*
-       * '(?:'는 묶기만 하고 매칭 결과를 바꾸지 않으므로 그냥 받는다.
-       *
-       * 전방·후방 탐색은 거부한다. 인게임 검색은 아이템 전문을 줄 단위로 훑기
-       * 때문에 흔히 쓰는 제외 관용구 '(^((?!단어).)*)'가 게임에서 통하지 않는다
-       * (https://www.pathofexile.com/forum/view-thread/3305826). 여기서만 통하게
-       * 두면 확장이 고른 지도가 게임에서는 안 걸린다.
-       */
       if (src[i + 1] === '?') {
-        if (src[i + 2] === ':') {
+        const kind = src[i + 2];
+
+        /*
+         * 전방 탐색은 게임에서 된다. poe.re가 '(?=(\S*r){2})' 꼴을 만들어 인게임에
+         * 그대로 붙여 넣게 하고, 지도용으로 흔히 도는 '...rar..(?!ch)'도 같은 꼴이다.
+         *
+         * 후방 탐색은 막는다. MSVC의 std::regex에는 구현이 아예 없다.
+         */
+        if (kind === '=' || kind === '!') {
+          i += 3;
+          const inner = parseAlt();
+          if (eof() || peek() !== ')') fail('닫는 괄호가 없습니다');
+          i++;
+          return { type: 'look', negated: kind === '!', node: inner };
+        }
+        if (kind === '<') {
+          fail('후방 탐색은 인게임 검색에서 쓸 수 없습니다', 'unsupported');
+        }
+        // '(?:'는 묶기만 하고 매칭 결과를 바꾸지 않는다.
+        if (kind === ':') {
           i += 3;
           const inner = parseAlt();
           if (eof() || peek() !== ')') fail('닫는 괄호가 없습니다');
           i++;
           return inner;
         }
-        fail('전방·후방 탐색은 인게임 검색에서 통하지 않습니다');
+        fail(`(?${kind ?? ''} 꼴은 인게임 검색에서 쓸 수 없습니다`, 'unsupported');
       }
       i++;
       const inner = parseAlt();
@@ -290,15 +334,21 @@ function parsePattern(src) {
       i++;
       if (eof()) fail('역슬래시로 끝났습니다');
       const esc = src[i];
-      /*
-       * 축약 클래스(\d \w \s)와 역참조(\1)는 인게임에서 통한다는 근거를 찾지
-       * 못했다. 통하지 않는다면 그냥 그 글자로 읽혀 조용히 다른 결과가 나온다.
-       * 어느 쪽인지 모르는 채로 넘기느니 대신 쓸 것을 알려 주고 막는다.
-       */
-      if (/[0-9]/.test(esc)) fail('역참조는 인게임 검색에서 쓸 수 없습니다');
-      if (/[A-Za-z]/.test(esc)) {
-        fail(`\\${esc}는 인게임 검색에서 통하지 않습니다 (\\d 대신 [0-9]처럼 쓰세요)`);
+
+      if (SHORTHAND[esc]) {
+        i++;
+        return { type: 'class', ...SHORTHAND[esc] };
       }
+      /*
+       * 역참조와 단어 경계는 게임에서 어떻게 되는지 알 수 없다. 문법상 있어야
+       * 맞지만 실제로 통했다는 보고를 찾지 못했다. 조용히 다른 결과를 내느니
+       * 막는다 — 지도 정규식에서 둘 다 쓸 일이 없다.
+       */
+      if (/[0-9]/.test(esc)) fail('역참조는 인게임 검색에서 쓸 수 없습니다', 'unsupported');
+      if (esc === 'b' || esc === 'B') {
+        fail('\\b(단어 경계)는 인게임 검색에서 쓸 수 없습니다', 'unsupported');
+      }
+      if (/[A-Za-z]/.test(esc)) fail(`\\${esc}는 모르는 이스케이프입니다`, 'unsupported');
       i++;
       return { type: 'char', ch: esc };
     }
@@ -321,6 +371,16 @@ function parsePattern(src) {
       let lo = src[i++];
       if (lo === '\\') {
         if (eof()) fail('역슬래시로 끝났습니다');
+        // '[\d.]'처럼 클래스 안에 든 축약 클래스는 범위를 그대로 합친다.
+        const shorthand = SHORTHAND[src[i]];
+        if (shorthand) {
+          if (shorthand.negated) {
+            fail(`클래스 안에는 \\${src[i]}를 넣을 수 없습니다`, 'unsupported');
+          }
+          ranges.push(...shorthand.ranges);
+          i++;
+          continue;
+        }
         lo = src[i++];
       }
       let hi = lo;
@@ -430,6 +490,12 @@ function compileProgram(root) {
         emit({ op: 'lineEnd' });
         return;
 
+      case 'look':
+        // 전방 탐색은 자리를 옮기지 않는다. 속을 따로 옮겨 두고, 맞추는 자리에서
+        // 그 자리에 붙여 돌려 본다(runProgram 참고).
+        emit({ op: 'look', negated: node.negated, prog: compileProgram(node.node) });
+        return;
+
       case 'seq':
         node.items.forEach(walk);
         return;
@@ -529,19 +595,23 @@ function consumes(inst, ch) {
 }
 
 /**
- * 패턴이 문구 어딘가에 걸리는지. 인게임 검색은 부분 일치이므로 자리마다 새 실을
- * 하나씩 풀어 놓는다.
+ * 명령 목록을 굴린다.
+ *
+ * anchored가 참이면 from 자리에서 시작하는 것만 본다(전방 탐색에 쓴다). 거짓이면
+ * 자리마다 새 실을 하나씩 풀어 놓는다 — 인게임 검색이 부분 일치이기 때문이다.
  */
-function searchProgram(prog, text) {
+function runProgram(prog, text, from, anchored) {
   const len = text.length;
   let running = [];
 
-  for (let pos = 0; pos <= len; pos++) {
+  for (let pos = from; pos <= len; pos++) {
     const seen = new Uint8Array(prog.length);
     const waiting = [];
 
-    // 갈래·건너뛰기·앵커는 글자를 먹지 않으므로 여기서 미리 다 펴 둔다.
-    const stack = [0, ...running];
+    // 갈래·건너뛰기·앵커·전방 탐색은 글자를 먹지 않으므로 여기서 미리 다 펴 둔다.
+    const stack = [...running];
+    if (!anchored || pos === from) stack.push(0);
+
     while (stack.length) {
       const pc = stack.pop();
       if (seen[pc]) continue;
@@ -562,6 +632,10 @@ function searchProgram(prog, text) {
         case 'lineEnd':
           if (pos === len || text[pos] === '\n') stack.push(pc + 1);
           break;
+        case 'look':
+          // 속을 이 자리에 붙여 돌려 보고, 결과가 뜻과 맞으면 지나간다.
+          if (runProgram(inst.prog, text, pos, true) !== inst.negated) stack.push(pc + 1);
+          break;
         case 'match':
           return true;
         default:
@@ -576,6 +650,8 @@ function searchProgram(prog, text) {
     for (const pc of waiting) {
       if (consumes(prog[pc], ch)) running.push(pc + 1);
     }
+    // 앵커된 실행에서 이어갈 실이 없으면 더 볼 것이 없다.
+    if (anchored && !running.length) return false;
   }
 
   return false;
@@ -584,15 +660,31 @@ function searchProgram(prog, text) {
 /* ---------------- 공개 API ---------------- */
 
 /**
+ * 항목 하나가 문구에 걸리는지.
+ *
+ * 게임은 먼저 글자 그대로 찾아보고, 없을 때 정규식으로 본다. GGG가 그렇게
+ * 고치겠다고 밝혔고(RhysGGG, "try a basic string match first, then attempt a
+ * regex match if the basic match fails") 3.14.1c의 "items with quality ...
+ * couldn't be filtered using the '+' character" 수정이 그 예시와 맞아떨어진다.
+ * 덕분에 '+16% 품질'처럼 정규식으로는 깨진 검색어도 게임에서는 그냥 걸린다.
+ */
+function termMatches(term, text) {
+  if (text.toLowerCase().includes(term.pattern.toLowerCase())) return true;
+  return term.prog ? runProgram(term.prog, text, 0, false) : false;
+}
+
+/**
  * 검색어를 해석해 매처를 만든다.
  *
  * 돌려주는 값:
- *  - terms   해석된 항목들 { source, pattern, negated, node, error }
- *  - errors  문법이 깨진 항목들 { source, message, index }
+ *  - terms   해석된 항목들 { source, pattern, negated, prog, error }
+ *  - errors  받지 못한 항목들 { source, message, index, kind }
  *  - test(text)  아이템 전문이 이 검색어에 걸리는지
  *
- * 문법이 깨진 항목은 매칭에서 빼고 errors에 담는다. 게임은 이런 검색어에
- * 아무것도 보여 주지 않지만, 확장은 어디가 틀렸는지 알려 줘야 고칠 수 있다.
+ * 문법이 깨진 항목(kind: 'syntax')은 글자 그대로 찾는 항목이 되고 errors에도
+ * 담긴다 — 게임과 같은 동작이지만, 정규식으로 쓸 생각이었다면 알아야 하니까.
+ * 게임에서 어떻게 되는지 알 수 없는 문법(kind: 'unsupported')은 아예 빼 둔다.
+ * 찍어서 맞추면 확장만 걸린다고 하고 게임은 아닌 어긋남이 생긴다.
  */
 function compileQuery(query) {
   const terms = [];
@@ -604,7 +696,7 @@ function compileQuery(query) {
       terms.push({ ...term, prog, error: null });
     } catch (err) {
       if (!(err instanceof PoeRegexError)) throw err;
-      const error = { source: term.source, message: err.message, index: err.index };
+      const error = { source: term.source, message: err.message, index: err.index, kind: err.kind };
       terms.push({ ...term, prog: null, error });
       errors.push(error);
     }
@@ -617,9 +709,8 @@ function compileQuery(query) {
     /** 항목을 모두 만족해야 한다(AND). '!'가 붙은 항목은 걸리면 탈락이다. */
     test(text) {
       for (const term of terms) {
-        if (!term.prog) continue;
-        const hit = searchProgram(term.prog, text);
-        if (hit === term.negated) return false;
+        if (term.error?.kind === 'unsupported') continue;
+        if (termMatches(term, text) === term.negated) return false;
       }
       return true;
     },
@@ -632,17 +723,52 @@ function matchesQuery(query, text) {
 }
 
 /**
+ * 항목 하나짜리 매처. compileQuery와 달리 공백으로 다시 쪼개지 않는다.
+ *
+ * 따옴표로 묶인 문구('"몬스터 피해"')나 이미 항목으로 쪼개 둔 패턴을 맞출 때
+ * 쓴다. 그냥 compileQuery에 넣으면 '몬스터'와 '피해' 두 항목의 AND가 되어,
+ * 붙어 있지 않아도 걸리는 다른 검색이 되어 버린다.
+ */
+function compilePattern(pattern) {
+  let prog = null;
+  let error = null;
+  try {
+    prog = compileProgram(parsePattern(pattern));
+  } catch (err) {
+    if (!(err instanceof PoeRegexError)) throw err;
+    error = { source: pattern, message: err.message, index: err.index, kind: err.kind };
+  }
+
+  const term = { pattern, prog, negated: false };
+  return {
+    pattern,
+    prog,
+    error,
+    test(text) {
+      if (error?.kind === 'unsupported') return false;
+      return termMatches(term, text);
+    },
+  };
+}
+
+/**
  * 검색어를 검사한다. 화면에 그대로 보여 줄 수 있는 결과를 돌려준다.
- *  - ok       문법이 온전한지
- *  - errors   깨진 항목들
- *  - length   글자 수
- *  - tooLong  인게임 한도(250자)를 넘었는지
+ *  - ok           그대로 써도 되는지 (받지 못한 문법이 없는지)
+ *  - errors       받지 못한 항목들
+ *  - unsupported  그중 게임에서 어떻게 되는지 알 수 없어 뺀 항목들
+ *  - length       글자 수
+ *  - tooLong      인게임 한도(250자)를 넘었는지
+ *
+ * 문법이 깨진 항목은 ok를 거짓으로 만들지만 매칭에서 빠지지는 않는다. 게임이
+ * 글자 그대로 찾아 주기 때문이다(termMatches 참고).
  */
 function validateQuery(query) {
   const { errors, terms } = compileQuery(query);
+  const unsupported = errors.filter((e) => e.kind === 'unsupported');
   return {
     ok: errors.length === 0,
     errors,
+    unsupported,
     terms,
     length: query.length,
     tooLong: query.length > POE_QUERY_MAX,
@@ -656,6 +782,7 @@ if (typeof module !== 'undefined') {
     splitAlternatives,
     parsePattern,
     compileQuery,
+    compilePattern,
     matchesQuery,
     validateQuery,
     PoeRegexError,

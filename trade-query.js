@@ -113,10 +113,15 @@ function parseRegexInput(input) {
   return patterns;
 }
 
-/** 패턴 하나가 이 모드의 문구에 걸리는지. 문법이 깨진 패턴은 불일치로 본다. */
+/**
+ * 패턴 하나가 이 모드의 문구에 걸리는지.
+ *
+ * compileQuery가 아니라 compilePattern을 쓴다. 여기 오는 것은 이미 항목으로
+ * 쪼개 둔 패턴이라, 공백에서 또 쪼개면 '"고유 보스가 주는"'이 세 낱말의 AND가
+ * 되어 붙어 있지 않은 모드까지 걸린다.
+ */
 function modMatchesPattern(pattern, mod) {
-  const compiled = compileQuery(pattern);
-  if (compiled.errors.length) return false;
+  const compiled = compilePattern(pattern);
   return modTexts(mod).some((text) => compiled.test(text));
 }
 
@@ -133,9 +138,11 @@ function matchModsByRegex(input, mods) {
   const invalid = [];
 
   for (const pattern of parseRegexInput(input)) {
-    const compiled = compileQuery(pattern);
-    if (compiled.errors.length) {
-      invalid.push({ pattern, message: compiled.errors[0].message });
+    const compiled = compilePattern(pattern);
+    // 문법이 깨진 패턴은 게임이 글자 그대로 찾아 주므로 그대로 맞춰 본다.
+    // 게임에서 어떻게 되는지 알 수 없는 문법만 따로 빼서 알린다.
+    if (compiled.error?.kind === 'unsupported') {
+      invalid.push({ pattern, message: compiled.error.message });
       continue;
     }
     const hits = mods.filter((mod) => modTexts(mod).some((text) => compiled.test(text)));

@@ -92,19 +92,33 @@ test('어디에도 안 걸리는 패턴은 unmatched로 알린다', () => {
   assert.deepStrictEqual(back.mods.map((m) => m.affix), ['- 피로']);
 });
 
-test('문법이 깨진 패턴은 왜 깨졌는지와 함께 알린다', () => {
+test('문법이 깨진 패턴은 글자 그대로 찾는다', () => {
+  // 게임과 같은 동작이다. '['는 어느 모드 문구에도 없으므로 unmatched로 남는다.
   const back = matchModsByRegex('!재사|[', MAP_MODS);
-  assert.strictEqual(back.invalid.length, 1);
-  assert.strictEqual(back.invalid[0].pattern, '[');
-  assert.match(back.invalid[0].message, /대괄호/);
-  // 성한 항목은 그대로 살린다.
+  assert.deepStrictEqual(back.invalid, []);
+  assert.deepStrictEqual(back.unmatched, ['[']);
   assert.deepStrictEqual(back.mods.map((m) => m.affix), ['- 피로']);
 });
 
-test('인게임에 없는 문법은 받지 않는다', () => {
-  const back = matchModsByRegex('(?=재사)', MAP_MODS);
+test('게임에서 어떻게 되는지 모르는 문법만 따로 알린다', () => {
+  const back = matchModsByRegex('(?<=몬스터)피해', MAP_MODS);
   assert.strictEqual(back.mods.length, 0);
   assert.strictEqual(back.invalid.length, 1);
+  assert.match(back.invalid[0].message, /후방 탐색/);
+});
+
+test('전방 탐색이 든 정규식도 그대로 읽는다', () => {
+  const back = matchModsByRegex('!재사(?=용)', MAP_MODS);
+  assert.deepStrictEqual(back.invalid, []);
+  assert.deepStrictEqual(back.mods.map((m) => m.affix), ['- 피로']);
+});
+
+test('따옴표로 묶은 문구는 붙어 있어야 걸린다', () => {
+  // 공백에서 다시 쪼개면 낱말들의 AND가 되어 엉뚱한 모드까지 걸린다.
+  const 야만적인 = mod('야만적인');
+  assert.strictEqual(야만적인.text, '몬스터 피해 (22—25)% 증가');
+  assert.strictEqual(modMatchesPattern('몬스터 피해', 야만적인), true);
+  assert.strictEqual(modMatchesPattern('몬스터 증가', 야만적인), false);
 });
 
 test('짧은 키워드가 앞에 온다 — 잘려도 더 많이 살아남게', () => {

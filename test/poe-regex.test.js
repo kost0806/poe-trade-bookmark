@@ -14,6 +14,7 @@ const {
   splitTerms,
   parsePattern,
   compileQuery,
+  compilePattern,
   matchesQuery,
   validateQuery,
   POE_QUERY_MAX,
@@ -140,15 +141,26 @@ test('역슬래시는 메타문자를 글자로 만든다', () => {
   assert.strictEqual(matchesQuery('a\\|b', 'ab'), false);
 });
 
-test('인게임에서 통하지 않는 문법은 오류로 돌려준다', () => {
-  // 전방·후방 탐색을 조용히 통과시키면 게임과 결과가 어긋난다.
-  assert.strictEqual(validateQuery('(?=재사)').ok, false);
-  assert.strictEqual(validateQuery('(?!재사)').ok, false);
-  // 축약 클래스와 역참조도 근거를 못 찾았으므로 막고 대안을 알려 준다.
-  assert.strictEqual(validateQuery('\\d+').ok, false);
-  assert.strictEqual(validateQuery('\\w').ok, false);
-  assert.strictEqual(validateQuery('\\s').ok, false);
-  assert.strictEqual(validateQuery('(가)\\1').ok, false);
+test('전방 탐색은 게임에서 되므로 그대로 받는다', () => {
+  // poe.re가 '(?=(\S*r){2})' 꼴을 만들어 인게임에 그대로 붙여 넣게 한다.
+  assert.strictEqual(validateQuery('(?=재사)').ok, true);
+  assert.strictEqual(matchesQuery('몬스터(?=는)', MAP_ITEM), true);
+  assert.strictEqual(matchesQuery('몬스터(?=피해)', MAP_ITEM), false);
+  // 부정 전방 탐색 — 지도 정규식에 흔한 '...rar..(?!ch)' 꼴이다.
+  assert.strictEqual(matchesQuery('몬스터(?!는)', MAP_ITEM), true);
+  assert.strictEqual(matchesQuery('타락(?!됨)', MAP_ITEM), false);
+  // 앞의 것을 먹지 않으므로 뒤에 다른 것이 이어붙는다.
+  assert.strictEqual(matchesQuery('(?=.*피해)몬스터', MAP_ITEM), true);
+});
+
+test('축약 클래스는 게임에서 되므로 그대로 받는다', () => {
+  // poe.re가 만드는 인게임 문자열에 '\d'가 쓰인다.
+  assert.strictEqual(matchesQuery('등급: \\d\\d', MAP_ITEM), true);
+  assert.strictEqual(matchesQuery('피해 \\d+%', MAP_ITEM), true);
+  assert.strictEqual(matchesQuery('\\D등급', MAP_ITEM), true);
+  assert.strictEqual(matchesQuery('83\\s', MAP_ITEM), false);
+  assert.strictEqual(matchesQuery('Map\\sTier', 'Map Tier: 16'), true);
+  assert.strictEqual(matchesQuery('[\\d]6', MAP_ITEM), true);
 });
 
 test('(?:...)는 묶기만 하므로 그대로 받는다', () => {
@@ -157,6 +169,18 @@ test('(?:...)는 묶기만 하므로 그대로 받는다', () => {
   assert.strictEqual(matchesQuery('(?:없는말|또없는말)', MAP_ITEM), false);
   // 묶음이므로 수량자도 붙는다.
   assert.strictEqual(matchesQuery('몬스터(?:는|가)', MAP_ITEM), true);
+});
+
+test('게임에서 어떻게 되는지 모르는 문법은 빼 둔다', () => {
+  // MSVC의 std::regex에는 후방 탐색 구현이 아예 없다.
+  const behind = validateQuery('(?<=몬스터)피해');
+  assert.strictEqual(behind.ok, false);
+  assert.strictEqual(behind.unsupported.length, 1);
+  // 역참조와 단어 경계는 통했다는 보고를 찾지 못했다.
+  assert.strictEqual(validateQuery('(가)\\1').unsupported.length, 1);
+  assert.strictEqual(validateQuery('\\b몬스터').unsupported.length, 1);
+  // 뺀 항목은 매칭에 끼지 않는다 — 찍어서 맞추지 않는다.
+  assert.strictEqual(matchesQuery('(?<=몬스터)없는말', MAP_ITEM), true);
 });
 
 test('깨진 문법은 자리와 함께 알려 준다', () => {
@@ -168,12 +192,23 @@ test('깨진 문법은 자리와 함께 알려 준다', () => {
   }
 });
 
-test('깨진 항목은 빼고 나머지로 맞춘다', () => {
+test('문법이 깨진 항목은 글자 그대로 찾는다', () => {
+  // 게임은 정규식으로 읽기 전에 글자 그대로 먼저 찾아본다. '+16%'처럼 정규식으로는
+  // 깨진 검색어가 게임에서 멀쩡히 걸리는 이유다.
+  assert.strictEqual(matchesQuery('+94%', MAP_ITEM), true);
+  assert.strictEqual(matchesQuery('+없는값%', MAP_ITEM), false);
+
   const compiled = compileQuery('재사 [');
   assert.strictEqual(compiled.errors.length, 1);
-  assert.strictEqual(compiled.errors[0].source, '[');
-  // 성한 항목이 걸리면 통과다. 어디가 틀렸는지는 errors로 알린다.
-  assert.strictEqual(compiled.test(MAP_ITEM), true);
+  assert.strictEqual(compiled.errors[0].kind, 'syntax');
+  // '['는 글자 그대로 찾으므로 이 아이템에는 없다 → 항목 AND가 깨진다.
+  assert.strictEqual(compiled.test(MAP_ITEM), false);
+  assert.strictEqual(compiled.test('재사 [대괄호]'), true);
+});
+
+test('글자 그대로 먼저 찾기가 정규식 매칭을 가리지 않는다', () => {
+  // 둘 중 하나만 걸려도 된다. '터.피해'는 글자 그대로는 없지만 정규식으로는 걸린다.
+  assert.strictEqual(matchesQuery('터.피해', MAP_ITEM), true);
 });
 
 test('빈 검색어는 모두 통과시킨다', () => {
@@ -186,6 +221,43 @@ test('길이 한도를 알려 준다', () => {
   assert.strictEqual(validateQuery(long).tooLong, true);
   assert.strictEqual(validateQuery('재사').tooLong, false);
   assert.strictEqual(validateQuery('재사').length, 2);
+});
+
+test('한 줄짜리 문구에서는 자바스크립트 RegExp와 결과가 같다', () => {
+  /*
+   * 게임 엔진은 ECMAScript 문법이므로, 두 엔진이 갈리는 자리(여러 줄, 글자 그대로
+   * 먼저 찾기)를 뺀 나머지는 RegExp와 답이 같아야 한다. 줄바꿈 없는 문구로 맞춰
+   * 보면 그 자리를 피할 수 있다.
+   */
+  const texts = [
+    '몬스터 피해 23% 증가',
+    '아이템 수량: +94% (강화됨)',
+    'Crimson Temple Map',
+    'Sockets: R-G-B-R',
+    '',
+    '지도 등급: 16',
+  ];
+  const patterns = [
+    '몬스터', '터.피해', '피해 \\d+%', '\\d\\d', '[0-9]+%', '[^0-9]수량',
+    '^몬스터', '증가$', '(불|물)리', '몬스터(?:는|가)', '수량|등급',
+    '가+', '가*나', '몬.{1,3}피해', '(?=.*피해)몬스터', '몬스터(?!피해)',
+    '([rgb]-){2}', '(\\S*R){2}', 'map', 'MAP', '[a-z]+', '\\s+', '\\w+:',
+    '지도 등급: 1[0-9]', 'x?y?z?', '(가|나|다){0,2}피해',
+  ];
+
+  const mismatches = [];
+  for (const pattern of patterns) {
+    const mine = compilePattern(pattern);
+    const theirs = new RegExp(pattern, 'i');
+    for (const text of texts) {
+      // 글자 그대로 먼저 찾기는 RegExp에 없는 규칙이라 갈리는 경우를 뺀다.
+      if (text.toLowerCase().includes(pattern.toLowerCase())) continue;
+      if (mine.test(text) !== theirs.test(text)) {
+        mismatches.push(`${pattern} vs ${JSON.stringify(text)}`);
+      }
+    }
+  }
+  assert.deepStrictEqual(mismatches, []);
 });
 
 test('되추적이 폭발하지 않는다', () => {
