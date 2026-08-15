@@ -88,7 +88,7 @@ const MAP_MODS = [
   { ids: ["explicit.stat_45546355"], regex: "해골", group: "지역 구성", affix: "해골의", text: "지역에 해골 서식" },
   { ids: ["explicit.stat_3516340048"], regex: "혼.서", group: "지역 구성", affix: "출몰하는", text: "지역에 혼 서식" },
   { ids: ["explicit.stat_3577222856"], regex: "에.훼", group: "지역 구성", affix: "- 모독", text: "지역에 훼손된 지대 존재" },
-  { ids: ["explicit.stat_2961018200"], regex: "흉물", group: "지역 구성", affix: "혐오스러운", text: "지역에 흉물 서식" },
+  { ids: ["explicit.stat_2961018200"], regex: "흉물.서", group: "지역 구성", affix: "혐오스러운", text: "지역에 흉물 서식" },
   { ids: ["explicit.stat_3126771445"], regex: "터.수", group: "지역 구성", affix: "적대자의", text: "희귀 몬스터 수 (20—30)% 증가" },
   { ids: ["explicit.stat_3278889477"], regex: "물리.가", group: "피해 반사", affix: "응징하는", rec: true, text: "희귀 몬스터가 물리 가시를 보유하고 800의 물리 피해 반사" },
   { ids: ["explicit.stat_3938822425"], regex: "원소.가", group: "피해 반사", affix: "반사된", rec: true, text: "희귀 몬스터가 원소 가시를 보유하고 1500의 원소 피해 반사" },
