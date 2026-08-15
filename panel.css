@@ -255,10 +255,140 @@ select {
   color: #fff;
 }
 
-.mod-list {
-  max-height: 210px;
+#open-mods {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 7px;
+  background: #342c24;
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+#open-mods:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* --- 모드 고르기 창 ---
+   사이드바(360px)로는 모드 80개를 훑기 어려워서, 고를 때만 화면 가운데에 넓게 편다.
+   위치는 화면 기준이라 칸을 밀어낸 margin에도, .panel의 overflow에도 영향받지 않는다. */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal-back {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.modal-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(1080px, 92vw);
+  height: min(800px, 88vh);
+  padding: 14px 16px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.modal-tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.modal-tools > input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 목록 머리 — 고른 개수, 무엇을 보일지, 전체 해제. 목록에 관한 것만 모여 있다. */
+.modal-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.modal-strip .count {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* 오른쪽 끝으로 밀어 붙인다 — 고르는 일과 지우는 일을 갈라 놓는다. */
+.push {
+  margin-left: auto;
+}
+
+/* 둘 중 하나를 고르는 자리라 버튼 두 개를 한 덩어리로 붙인다(체크박스보다 상태가 분명하다). */
+.seg {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.seg-btn {
+  padding: 4px 10px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.seg-btn + .seg-btn {
+  border-left: 1px solid var(--border);
+}
+
+.seg-btn:hover {
+  background: #241f1a;
+  color: var(--text);
+}
+
+.seg-btn.on {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 남는 높이는 모두 목록이 가져간다. 넓은 폭을 여러 칸으로 나눠 한 화면에 더 담는다. */
+.mod-grid {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  margin: 6px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  align-content: start;
+  gap: 1px 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: #15120f;
@@ -266,26 +396,37 @@ select {
   scrollbar-color: var(--border) transparent;
 }
 
+/* 계열 제목은 칸 전체에 걸쳐, 훑는 동안 어디를 보고 있는지 잃지 않게 한다. */
 .mod-group {
-  padding: 4px 6px;
+  grid-column: 1 / -1;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 5px 8px;
   background: #241f1a;
   color: var(--muted);
   font-size: 11px;
   font-weight: 600;
-  position: sticky;
-  top: 0;
 }
 
 .mod-item {
   display: flex;
-  gap: 6px;
-  padding: 3px 6px;
+  gap: 7px;
+  margin: 0; /* label 기본 여백을 지운다 — 칸 사이 간격은 grid의 gap이 맡는다. */
+  padding: 4px 8px;
   cursor: pointer;
   align-items: flex-start;
+  border-radius: 3px;
 }
 
 .mod-item:hover {
   background: #241f1a;
+}
+
+/* 고른 것은 색으로 남겨, 목록을 되짚지 않아도 무엇을 골랐는지 보이게 한다. */
+.mod-item.on {
+  background: #2b2118;
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .mod-item input {
@@ -296,12 +437,55 @@ select {
 
 .mod-item span {
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .mod-item .kw {
   color: var(--muted);
   font-size: 11px;
+}
+
+.mod-item .rec {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.mod-none {
+  grid-column: 1 / -1;
+  padding: 12px;
+}
+
+.modal-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-regex {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-family: Consolas, monospace;
+  font-size: 12px;
+}
+
+.modal-regex.over {
+  color: #d08a6a;
+}
+
+#mod-done {
+  flex: none;
+  padding: 7px 22px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+#mod-done:hover {
+  background: var(--accent-hover);
 }
 
 #regex-out {
@@ -382,6 +566,17 @@ select {
   display: block;
   font-size: 11px;
   color: var(--muted);
+}
+
+/* 남는 높이는 북마크 목록이 가져가고, 기록은 제 높이만 쓰며 안에서만 스크롤한다. */
+.history-list {
+  flex: none;
+  max-height: 168px;
+}
+
+.mini.wide {
+  width: 100%;
+  margin-top: 6px;
 }
 
 .item-delete {

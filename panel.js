@@ -7,10 +7,13 @@
  */
 
 const STORAGE_KEY = 'bookmarks';
+const HISTORY_KEY = 'history';
 const BUILDER_KEY = 'builder';
 const LEAGUE_CACHE_KEY = 'leagues';
 const PENDING_KEY = 'pending';
 const PANEL_OPEN_KEY = 'panelOpen';
+const HISTORY_OPEN_KEY = 'historyOpen';
+const NAV_KEY = 'nav';
 
 const HOST_ID = 'poe-trade-bookmark-root';
 
@@ -46,20 +49,9 @@ const PANEL_HTML = `
         <div id="builder" hidden>
           <div class="row">
             <select id="league" title="리그"></select>
-            <select id="preset" title="프리셋"></select>
-            <button type="button" id="preset-none" class="mini">해제</button>
           </div>
-          <p id="preset-desc" class="target"></p>
 
-          <input id="mod-search" type="text" autocomplete="off" placeholder="맵모드 검색 (예: 반사, 원소.가)" />
-
-          <div id="mod-list" class="mod-list"></div>
-
-          <label for="regex-in">정규식으로 선택</label>
-          <div class="row">
-            <input id="regex-in" type="text" autocomplete="off" placeholder="인게임 정규식 붙여넣기 (예: !대상이|재사용)" />
-            <button type="button" id="apply-regex" class="mini">선택</button>
-          </div>
+          <button type="button" id="open-mods">거를 모드 고르기</button>
 
           <label for="regex-out">
             인게임 정규식 <span id="regex-len" class="count"></span>
@@ -79,6 +71,67 @@ const PANEL_HTML = `
         <ul id="list" class="list"></ul>
         <p id="empty" class="status" hidden>아직 저장된 북마크가 없습니다.</p>
       </section>
+
+      <section class="card">
+        <h2>
+          <button type="button" id="history-toggle" class="section-toggle">
+            <span id="history-arrow">▼</span> 검색 기록 <span id="history-count" class="count"></span>
+          </button>
+        </h2>
+
+        <div id="history">
+          <ul id="history-list" class="list history-list"></ul>
+          <p id="history-empty" class="status" hidden>거래소에서 직접 검색하면 여기에 쌓입니다.</p>
+          <button type="button" id="history-clear" class="mini wide" hidden>기록 비우기</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!--
+    모드 고르기 창. 사이드바 폭(360px)으로는 80개를 훑기가 어려워서, 고를 때만
+    화면 가운데에 넓게 편다. .panel 바깥에 두어 칸 안에서 잘리지 않게 한다.
+  -->
+  <div class="modal" id="mod-modal" hidden>
+    <div class="modal-back" id="mod-back"></div>
+
+    <div class="modal-box" role="dialog" aria-modal="true" aria-label="거를 맵모드 고르기">
+      <div class="modal-head">
+        <h2>거를 맵모드 고르기</h2>
+        <button type="button" id="mod-close" class="mini">닫기 (Esc)</button>
+      </div>
+
+      <!-- 찾는 줄: 검색과 프리셋 -->
+      <div class="modal-tools">
+        <input id="mod-search" type="text" autocomplete="off" placeholder="모드 검색 — 문구, 접두어 이름, 정규식(예: 반사, 원소.가)" />
+        <select id="preset" title="프리셋"></select>
+      </div>
+
+      <!-- 붙여넣는 줄: 인게임 정규식으로 한 번에 선택 -->
+      <div class="modal-tools">
+        <input id="regex-in" type="text" autocomplete="off" placeholder="인게임 정규식을 붙여넣어 한 번에 선택 (예: !대상이|재사용)" />
+        <button type="button" id="apply-regex" class="mini">정규식으로 선택</button>
+      </div>
+
+      <p id="preset-desc" class="target"></p>
+      <p id="modal-status" class="status" hidden></p>
+
+      <!-- 목록 머리: 지금 몇 개를 골랐고, 무엇을 보여줄지 -->
+      <div class="modal-strip">
+        <span id="mod-count" class="count">아직 고른 모드 없음</span>
+        <div class="seg" role="group" aria-label="목록에 보일 모드">
+          <button type="button" id="view-all" class="seg-btn on" aria-pressed="true">전체</button>
+          <button type="button" id="view-selected" class="seg-btn" aria-pressed="false">고른 것만</button>
+        </div>
+        <button type="button" id="preset-none" class="mini push">전체 해제</button>
+      </div>
+
+      <div id="mod-list" class="mod-grid"></div>
+
+      <div class="modal-foot">
+        <span id="mod-regex" class="modal-regex"></span>
+        <button type="button" id="mod-done">완료</button>
+      </div>
     </div>
   </div>
 `;
@@ -139,6 +192,13 @@ const addBtn = $('add-btn');
 const listEl = $('list');
 const emptyEl = $('empty');
 const countEl = $('count');
+const historyEl = $('history');
+const historyToggle = $('history-toggle');
+const historyArrow = $('history-arrow');
+const historyListEl = $('history-list');
+const historyEmptyEl = $('history-empty');
+const historyCountEl = $('history-count');
+const historyClearEl = $('history-clear');
 
 /* ---------------- 열기 / 접기 ---------------- */
 
@@ -165,6 +225,8 @@ function renderPanel() {
 
 async function setPanelOpen(open) {
   panelEl.hidden = !open;
+  // 칸을 접으면 모드 고르기 창도 같이 닫는다 — 칸 없이 창만 떠 있을 이유가 없다.
+  if (!open) closeMods();
   renderPanel();
   await chrome.storage.local.set({ [PANEL_OPEN_KEY]: open });
 }
@@ -201,9 +263,46 @@ function formatDate(ts) {
   });
 }
 
+/** 기록은 같은 날 여러 번 쌓이므로 시각까지 보여 준다. */
+function formatTime(ts) {
+  return new Date(ts).toLocaleString('ko-KR', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+const modeLabel = (mode) => (mode === 'exchange' ? '대량거래' : '검색');
+
 /** 패널이 거래소 안에서만 살아 있으므로 항상 이 탭에서 그대로 이동한다. */
-function openBookmark(bookmark) {
-  location.assign(bookmark.url);
+async function openRecord(record) {
+  // 패널에서 옮겨 간 검색은 기록에 남기지 않는다 — 기록은 거래소에서 직접 한 검색만이다.
+  await markPanelNav(record.url);
+  location.assign(record.url);
+}
+
+/**
+ * 목록 한 줄의 본체. 마우스를 올리면 어떤 조건으로 검색한 것인지 요약이 뜬다.
+ * 요약이 없으면(옛 북마크, 폼을 못 읽은 대량거래) 주소라도 보여 준다.
+ */
+function itemButton(record, meta) {
+  const open = document.createElement('button');
+  open.type = 'button';
+  open.className = 'item-open';
+  open.title = formatSummary(record.summary) || record.url;
+
+  const name = document.createElement('span');
+  name.className = 'item-title';
+  name.textContent = record.title;
+
+  const sub = document.createElement('span');
+  sub.className = 'item-meta';
+  sub.textContent = meta;
+
+  open.append(name, sub);
+  open.addEventListener('click', () => openRecord(record));
+  return open;
 }
 
 function renderList(bookmarks) {
@@ -214,25 +313,12 @@ function renderList(bookmarks) {
   for (const bookmark of bookmarks) {
     const li = document.createElement('li');
 
-    const open = document.createElement('button');
-    open.type = 'button';
-    open.className = 'item-open';
-    open.title = bookmark.url;
-
-    const title = document.createElement('span');
-    title.className = 'item-title';
-    title.textContent = bookmark.title;
-
-    const meta = document.createElement('span');
-    meta.className = 'item-meta';
-    meta.textContent = `${bookmark.league} · ${
-      bookmark.mode === 'exchange' ? '대량거래' : '검색'
-    } · ${formatDate(bookmark.createdAt)}`;
-
-    open.append(title, meta);
-    open.addEventListener('click', () => openBookmark(bookmark));
-
-    li.append(open);
+    li.append(
+      itemButton(
+        bookmark,
+        `${bookmark.league} · ${modeLabel(bookmark.mode)} · ${formatDate(bookmark.createdAt)}`
+      )
+    );
 
     if (bookmark.regex) {
       const copy = document.createElement('button');
@@ -263,6 +349,125 @@ function renderList(bookmarks) {
   }
 }
 
+/* ---------------- 검색 기록 ---------------- */
+
+/*
+ * 거래소에서 직접 한 검색을 그대로 쌓아 둔다. 북마크는 남길 것을 골라 두는 자리라
+ * 검색할 때마다 손이 가지만, 기록은 아무것도 안 해도 남아서 "아까 그 검색"으로
+ * 되돌아갈 수 있다. 검색 조건은 검색 ID에 묶여 있으므로 주소만 있으면 그때의
+ * 검색어와 필터가 그대로 복원된다 — 조건을 따로 재현할 필요가 없다.
+ */
+
+// 기록은 오래된 것부터 밀려난다. 저장 공간보다 목록에서 찾기 좋은 길이가 기준이다.
+const HISTORY_MAX = 50;
+// 패널에서 이동했다는 표식의 수명. 이동 직후의 로드에서만 쓰이므로 짧아도 된다.
+const NAV_TTL_MS = 60 * 1000;
+
+// 패널의 북마크/기록을 눌러 들어온 주소. 그 검색은 한 번 건너뛴다.
+let skipNavUrl = null;
+// 지금 페이지에서 읽어 둔 검색 조건 요약 (북마크를 저장할 때 함께 넣는다).
+let currentSummary = null;
+
+async function getHistory() {
+  const data = await chrome.storage.local.get(HISTORY_KEY);
+  return Array.isArray(data[HISTORY_KEY]) ? data[HISTORY_KEY] : [];
+}
+
+async function setHistory(history) {
+  await chrome.storage.local.set({ [HISTORY_KEY]: history });
+}
+
+/**
+ * 패널에서 옮겨 간다고 표시해 둔다.
+ * 이동하면 페이지가 다시 로드되어 이 스크립트도 새로 시작하므로 스토리지에 맡긴다.
+ */
+async function markPanelNav(url) {
+  await chrome.storage.local.set({ [NAV_KEY]: { url, at: Date.now() } });
+}
+
+/**
+ * 표식을 한 번 쓰고 지운다. 오래된 것은 (탭을 한참 뒤에 열었을 때) 무시한다.
+ * 주소가 맞을 때만 가져가므로, 마침 같이 열린 다른 탭이 대신 써 버리지 않는다.
+ */
+async function takePanelNav(url) {
+  const saved = (await chrome.storage.local.get(NAV_KEY))[NAV_KEY];
+  if (!saved) return null;
+
+  const stale = Date.now() - saved.at > NAV_TTL_MS;
+  if (stale || saved.url === url) await chrome.storage.local.remove(NAV_KEY);
+  return !stale && saved.url === url ? saved.url : null;
+}
+
+/**
+ * 지금 보고 있는 검색을 기록에 남긴다.
+ *
+ * 같은 검색(같은 주소)은 새로 쌓지 않고 맨 위로 올린다. 거래소는 조건이 같으면
+ * 같은 검색 ID를 돌려주므로, 같은 검색을 반복해도 목록이 그것으로 채워지지 않는다.
+ */
+async function recordHistory(parsed, summary) {
+  if (!parsed?.searchId) return;
+
+  // 패널에서 눌러 들어온 검색은 한 번만 건너뛴다. 그 뒤 이 페이지에서 새로 한
+  // 검색은 주소가 바뀌므로 정상적으로 쌓인다.
+  if (skipNavUrl === parsed.url) {
+    skipNavUrl = null;
+    return;
+  }
+
+  const history = await getHistory();
+  const previous = history.find((h) => h.url === parsed.url);
+  const record = {
+    id: previous?.id ?? crypto.randomUUID(),
+    title: titleFromSummary(summary) || suggestTitle(parsed),
+    url: parsed.url,
+    league: parsed.league,
+    mode: parsed.mode,
+    searchId: parsed.searchId,
+    // 구조 그대로 넣어 둔다. 보여 주는 모양은 그릴 때 정한다.
+    ...(hasSummary(summary) ? { summary } : {}),
+    at: Date.now(),
+  };
+
+  const rest = history.filter((h) => h.url !== parsed.url);
+  await setHistory([record, ...rest].slice(0, HISTORY_MAX));
+}
+
+function renderHistory(history) {
+  historyListEl.textContent = '';
+  historyCountEl.textContent = history.length ? `(${history.length})` : '';
+  historyEmptyEl.hidden = history.length > 0;
+  historyClearEl.hidden = history.length === 0;
+
+  for (const entry of history) {
+    const li = document.createElement('li');
+    li.append(itemButton(entry, `${entry.league} · ${modeLabel(entry.mode)} · ${formatTime(entry.at)}`));
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'item-delete';
+    del.textContent = '삭제';
+    del.title = '기록에서 지우기';
+    del.addEventListener('click', async () => {
+      await setHistory((await getHistory()).filter((h) => h.id !== entry.id));
+    });
+
+    li.append(del);
+    historyListEl.append(li);
+  }
+}
+
+historyToggle.addEventListener('click', async () => {
+  historyEl.hidden = !historyEl.hidden;
+  historyArrow.textContent = historyEl.hidden ? '▶' : '▼';
+  await chrome.storage.local.set({ [HISTORY_OPEN_KEY]: !historyEl.hidden });
+});
+
+historyClearEl.addEventListener('click', async () => {
+  await setHistory([]);
+});
+
+/* ---------------- 북마크 폼 채우기 ---------------- */
+
 // 거래소가 폼을 채우기 전에 읽을 수 있다(북마크 링크로 새로 열었을 때). 페이지를
 // 훑는 것뿐이라 비용이 거의 없으니, 값이 보일 때까지 잠깐 다시 본다.
 const FILL_RETRY_MS = 250;
@@ -274,23 +479,41 @@ let filledName = null; // 우리가 채워 둔 추천 이름
 let nameTouched = false; // 사용자가 이름 칸을 직접 고쳤는지
 
 /**
- * 검색창·필터에서 뽑은 이름으로 기본값을 바꿔 준다. (titleFromSearchPane은 search-name.js)
- * 끝까지 못 뽑으면 검색 ID로 만든 이름이 그대로 남는다.
+ * 폼이 채워질 때까지 기다렸다가 검색 조건을 읽는다.
+ * (summarizeSearchPane / hasSummary는 search-summary.js)
  */
-async function fillTitle(parsed) {
+async function readSummary(parsed) {
   for (let i = 0; i < FILL_TRIES; i++) {
-    // 그 사이 페이지가 바뀌었거나 사용자가 이름을 고쳤으면 건드리지 않는다.
-    if (current?.url !== parsed.url || nameTouched) return;
+    // 그 사이 페이지가 바뀌었으면 그만둔다.
+    if (current?.url !== parsed.url) return null;
 
-    const title = titleFromSearchPane(document);
-    if (title) {
-      filledName = title;
-      titleEl.value = title;
-      syncButton();
-      return;
-    }
+    const summary = summarizeSearchPane(document);
+    if (hasSummary(summary)) return summary;
     await sleep(FILL_RETRY_MS);
   }
+  return null;
+}
+
+/**
+ * 폼에서 읽은 조건으로 추천 이름을 채우고, 이 검색을 기록에 남긴다.
+ * 끝까지 못 읽으면 검색 ID로 만든 이름이 그대로 남는다.
+ */
+async function fillFromSearchPane(parsed) {
+  const summary = await readSummary(parsed);
+  if (current?.url !== parsed.url) return;
+
+  // 북마크로 저장할 때 이 요약을 함께 넣는다.
+  currentSummary = summary;
+
+  // 저장해 둔 이름, 빌더가 지어 준 이름, 사용자가 적어 둔 이름은 건드리지 않는다.
+  const title = titleFromSummary(summary);
+  if (title && !nameTouched && !savedBookmark && !(pending && pending.url === parsed.url)) {
+    filledName = title;
+    titleEl.value = title;
+    syncButton();
+  }
+
+  await recordHistory(parsed, summary);
 }
 
 /**
@@ -307,9 +530,11 @@ function watchSearch() {
   // (거래소가 폼을 채우는 중일 수 있어 '없음 → 있음'은 검색이 바뀐 게 아니다.)
   if (filledName === null) return;
 
-  const name = titleFromSearchPane(document);
+  const summary = summarizeSearchPane(document);
+  const name = titleFromSummary(summary);
   if (!name || name === filledName) return;
 
+  currentSummary = summary;
   filledName = name;
   titleEl.value = name;
   nameTouched = false;
@@ -362,9 +587,6 @@ async function renderForm() {
     setStatus('', null);
     // 우선 검색 ID로 이름을 채워 두고, 검색창의 아이템 이름을 알아내면 그걸로 바꾼다.
     titleEl.value = suggestTitle(current);
-    syncButton();
-    await fillTitle(current);
-    return;
   }
   syncButton();
 }
@@ -376,11 +598,14 @@ async function refresh({ force = false } = {}) {
   const key = current ? current.url : null;
   if (!force && key === renderedUrl) return;
   renderedUrl = key;
+  currentSummary = null;
 
   // 그리는 중에는 watchSearch가 끼어들지 않게 한다.
   rendering = true;
   try {
     await renderForm();
+    // 폼은 거래소가 조금 늦게 채운다. 채워지면 추천 이름과 검색 기록에 쓴다.
+    if (current?.searchId) await fillFromSearchPane(current);
   } finally {
     rendering = false;
   }
@@ -406,7 +631,13 @@ formEl.addEventListener('submit', async (event) => {
   if (existing) {
     if (name === existing.title) return;
     // 같은 검색을 다시 저장하면 새로 추가하지 않고 이름만 바꾼다.
-    record = { ...existing, title: name, updatedAt: Date.now() };
+    record = {
+      ...existing,
+      title: name,
+      updatedAt: Date.now(),
+      // 요약을 붙이기 전에 저장한 북마크라면 이번에 함께 넣어 준다.
+      ...(hasSummary(currentSummary) ? { summary: currentSummary } : {}),
+    };
     updated = bookmarks.map((b) => (b.id === existing.id ? record : b));
     message = `이름을 "${name}"(으)로 바꿨습니다.`;
   } else {
@@ -419,6 +650,8 @@ formEl.addEventListener('submit', async (event) => {
       mode: current.mode,
       searchId: current.searchId,
       createdAt: Date.now(),
+      // 마우스를 올렸을 때 보여줄 검색 조건.
+      ...(hasSummary(currentSummary) ? { summary: currentSummary } : {}),
       // 8모드 빌더로 만든 검색이면 인게임 정규식을 같이 저장한다.
       ...(built ? { regex: built.regex } : {}),
     };
@@ -451,7 +684,11 @@ setInterval(() => {
 
 // 다른 탭에서 추가/삭제한 내용도 즉시 반영한다.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local' || !changes[STORAGE_KEY]) return;
+  if (area !== 'local') return;
+
+  if (changes[HISTORY_KEY]) renderHistory(changes[HISTORY_KEY].newValue ?? []);
+
+  if (!changes[STORAGE_KEY]) return;
   const bookmarks = changes[STORAGE_KEY].newValue ?? [];
   renderList(bookmarks);
 
@@ -486,18 +723,32 @@ const runSearchBtn = $('run-search');
 const builderStatusEl = $('builder-status');
 const presetEl = $('preset');
 const presetDescEl = $('preset-desc');
+const openModsBtn = $('open-mods');
+const modalEl = $('mod-modal');
+const modCountEl = $('mod-count');
+const modRegexEl = $('mod-regex');
+const viewAllBtn = $('view-all');
+const viewSelectedBtn = $('view-selected');
+const modalStatusEl = $('modal-status');
 
 const selected = new Set(); // 거를 모드 키
+let onlySelected = false; // 창의 목록에 고른 모드만 보이기
 let lastSearchAt = 0;
 let pending = null; // 방금 만든 검색 {url, title, regex, at}
 
 const modKey = (mod) => mod.ids.join(',');
 const selectedMods = () => MAP_MODS.filter((m) => selected.has(modKey(m)));
 
+/**
+ * 빌더의 안내 문구. 모드를 고르는 동안에는 사이드바가 창에 가려 보이지 않으므로
+ * 창 안에도 같은 문구를 띄운다.
+ */
 function setBuilderStatus(message, kind) {
-  builderStatusEl.textContent = message;
-  builderStatusEl.className = kind ? `status ${kind}` : 'status';
-  builderStatusEl.hidden = !message;
+  for (const el of [builderStatusEl, modalStatusEl]) {
+    el.textContent = message;
+    el.className = kind ? `status ${kind}` : 'status';
+    el.hidden = !message;
+  }
 }
 
 async function loadPending() {
@@ -516,12 +767,23 @@ async function clearPending() {
   await chrome.storage.local.remove(PENDING_KEY);
 }
 
+/**
+ * 창 안의 모드 목록.
+ *
+ * 사이드바 폭으로는 80개를 한 줄씩 훑어야 해서 찾기가 어려웠다. 창은 넓으므로
+ * 여러 칸으로 늘어놓고, 계열 제목은 칸 전체에 걸쳐 붙여 어디를 보고 있는지
+ * 잃지 않게 한다. 고른 항목은 색으로 표시해 목록을 되짚지 않아도 되게 한다.
+ */
 function renderMods() {
   const q = modSearchEl.value.trim();
   modListEl.textContent = '';
 
   let group = null;
+  let shown = 0;
+
   for (const mod of MAP_MODS) {
+    const key = modKey(mod);
+    if (onlySelected && !selected.has(key)) continue;
     // 이름·문구 부분일치 외에 인게임 정규식꼴 검색("원소.가")도 받는다.
     if (q && !mod.text.includes(q) && !mod.affix.includes(q) && !modMatchesPattern(q, mod)) continue;
 
@@ -533,21 +795,34 @@ function renderMods() {
       modListEl.append(head);
     }
 
-    const key = modKey(mod);
     const label = document.createElement('label');
-    label.className = 'mod-item';
+    label.className = selected.has(key) ? 'mod-item on' : 'mod-item';
+    // 한 항목이 여러 줄을 묶기도 한다(값만 다른 같은 계열). 나머지 줄은 여기에 둔다.
+    label.title = `${mod.affix}\n${mod.text}`;
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.checked = selected.has(key);
     cb.addEventListener('change', () => {
       cb.checked ? selected.add(key) : selected.delete(key);
+      label.classList.toggle('on', cb.checked);
       updateRegex();
       saveBuilderState();
     });
 
     const text = document.createElement('span');
+    text.className = 'mod-text';
     text.textContent = mod.text.split('\n')[0];
+
+    if (mod.rec) {
+      // 빌드와 무관하게 흔히 거르는 모드. 무엇부터 볼지 정하는 데 쓴다.
+      const star = document.createElement('span');
+      star.className = 'rec';
+      star.textContent = ' ★';
+      star.title = '흔히 거르는 모드';
+      text.append(star);
+    }
+
     const kw = document.createElement('span');
     kw.className = 'kw';
     kw.textContent = ` (${mod.regex})`;
@@ -555,6 +830,14 @@ function renderMods() {
 
     label.append(cb, text);
     modListEl.append(label);
+    shown++;
+  }
+
+  if (!shown) {
+    const none = document.createElement('p');
+    none.className = 'status mod-none';
+    none.textContent = onlySelected ? '고른 모드가 없습니다.' : '검색과 맞는 모드가 없습니다.';
+    modListEl.append(none);
   }
 }
 
@@ -566,6 +849,14 @@ function updateRegex() {
   runSearchBtn.textContent = selected.size
     ? `거래소 검색 만들기 (${selected.size}개 거름)`
     : '거래소 검색 만들기';
+
+  openModsBtn.textContent = selected.size
+    ? `거를 모드 고르기 (${selected.size}개 고름)`
+    : '거를 모드 고르기';
+  modCountEl.textContent = selected.size ? `${selected.size}개 고름` : '아직 고른 모드 없음';
+  // 창을 닫지 않아도 정규식이 어떻게 자라는지 보이게 한다.
+  modRegexEl.textContent = regex ? `${regex}  (${regex.length}/${REGEX_MAX}자)` : '';
+  modRegexEl.className = regex.length > REGEX_MAX ? 'modal-regex over' : 'modal-regex';
 }
 
 async function saveBuilderState() {
@@ -658,6 +949,47 @@ builderToggle.addEventListener('click', () => {
 modSearchEl.addEventListener('input', renderMods);
 leagueEl.addEventListener('change', saveBuilderState);
 runSearchBtn.addEventListener('click', runSearch);
+
+/* ---------------- 모드 고르기 창 ---------------- */
+
+/** 목록에 무엇을 보일지 — 전체냐, 고른 것만이냐. */
+function setView(only) {
+  onlySelected = only;
+  for (const [btn, on] of [
+    [viewAllBtn, !only],
+    [viewSelectedBtn, only],
+  ]) {
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', String(on));
+  }
+  renderMods();
+}
+
+function openMods() {
+  modalEl.hidden = false;
+  // 열 때는 늘 전체부터 — 지난번에 걸어 둔 '고른 것만'에 갇히지 않게 한다.
+  setView(false);
+  // 바로 검색어를 칠 수 있게 한다. 찾던 말이 남아 있으면 통째로 잡아 준다.
+  modSearchEl.focus();
+  modSearchEl.select();
+}
+
+function closeMods() {
+  modalEl.hidden = true;
+}
+
+openModsBtn.addEventListener('click', openMods);
+$('mod-close').addEventListener('click', closeMods);
+$('mod-done').addEventListener('click', closeMods);
+// 바깥을 눌러도 닫는다. 고른 내용은 그때그때 저장되므로 잃을 것이 없다.
+$('mod-back').addEventListener('click', closeMods);
+viewAllBtn.addEventListener('click', () => setView(false));
+viewSelectedBtn.addEventListener('click', () => setView(true));
+
+// Esc로 닫기. 이 키는 host에서 이미 거래소로 새지 않게 막아 두었다.
+root.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !modalEl.hidden) closeMods();
+});
 
 function applyPreset(id) {
   const preset = PRESETS.find((p) => p.id === id);
@@ -789,12 +1121,19 @@ async function initBuilder() {
   await applyStyles();
 
   // 기본은 접힌 상태 — 거래소 화면을 좁히지 않도록 손잡이만 띄운다.
-  const stored = await chrome.storage.local.get(PANEL_OPEN_KEY);
+  const stored = await chrome.storage.local.get([PANEL_OPEN_KEY, HISTORY_OPEN_KEY]);
   panelEl.hidden = stored[PANEL_OPEN_KEY] !== true;
   renderPanel();
 
+  // 검색 기록은 기본이 펼친 상태다. 손대지 않아도 쌓이는 목록이라 보여야 쓸모가 있다.
+  historyEl.hidden = stored[HISTORY_OPEN_KEY] === false;
+  historyArrow.textContent = historyEl.hidden ? '▶' : '▼';
+
   pending = await loadPending();
+  // 기록에 남길지 가리는 표식이라, 첫 refresh보다 먼저 읽어 둔다.
+  skipNavUrl = await takePanelNav(parseTradeUrl(location.href)?.url ?? null);
   renderList(await getBookmarks());
+  renderHistory(await getHistory());
   await refresh({ force: true });
   await initBuilder();
 })();
