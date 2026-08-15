@@ -34,8 +34,8 @@ const STATUS_INSTANT_BUYOUT = 'securable';
 // 서버(origin)는 패널이 붙어 있는 거래소 페이지에서 그대로 가져다 쓴다.
 const DEFAULT_LEAGUE = 'Allflame';
 
-// 인게임 검색창 입력 한도
-const REGEX_MAX = 250;
+// 인게임 검색창 입력 한도. 한도도 문법도 poe-regex.js가 갖고 있다.
+const REGEX_MAX = POE_QUERY_MAX;
 
 /** 거래소 검색 쿼리 JSON */
 function buildSearchQuery({
@@ -81,80 +81,43 @@ function buildRegex(mods) {
 /* ---------------- 정규식 → 모드 (역방향) ---------------- */
 
 /*
+ * 맞춰 보는 일은 poe-regex.js가 한다. 자바스크립트의 RegExp를 쓰면 게임에 없는
+ * 문법(전방 탐색 등)까지 통과시켜, 확장에서만 걸리고 게임에서는 안 걸리는
+ * 정규식을 멀쩡한 것처럼 받아 주게 된다.
+ */
+
+/*
  * 모드 text의 수치 구간 "(22—25)%"는 실제 아이템에서는 "23%"처럼 한 값으로
  * 찍힌다. poe.re 등에서 만든 정규식은 실제 문구를 기준으로 하므로("피해...%"),
  * 구간을 첫 값으로 치환한 표본도 같이 대조한다.
  */
 const RANGE_RE = /\((-?\d+)—(-?\d+)\)/g;
 
-/** 정규식을 맞춰 볼 문구 — 원문 줄 + 수치 구간을 채운 표본 줄 */
-function modLines(mod) {
-  const raw = mod.text.split('\n');
-  const sample = mod.text.replace(RANGE_RE, '$1').split('\n');
-  return [...new Set([...raw, ...sample])];
-}
-
-/**
- * 정규식을 최상위 '|'에서만 나눈다. 괄호 그룹 안('대치.-(9|1[0-2])%')이나
- * 문자 클래스, 이스케이프된 \| 속의 '|'는 대안 구분자가 아니므로 지나친다.
- */
-function splitAlternatives(pattern) {
-  const parts = [];
-  let depth = 0;
-  let inClass = false;
-  let cur = '';
-  for (let i = 0; i < pattern.length; i++) {
-    const ch = pattern[i];
-    if (ch === '\\') {
-      cur += ch + (pattern[i + 1] ?? '');
-      i++;
-      continue;
-    }
-    if (inClass) {
-      cur += ch;
-      if (ch === ']') inClass = false;
-      continue;
-    }
-    if (ch === '[') inClass = true;
-    else if (ch === '(') depth++;
-    else if (ch === ')') depth = Math.max(0, depth - 1);
-    else if (ch === '|' && depth === 0) {
-      parts.push(cur);
-      cur = '';
-      continue;
-    }
-    cur += ch;
-  }
-  parts.push(cur);
-  return parts.filter(Boolean);
+/** 정규식을 맞춰 볼 문구 — 원문 + 수치 구간을 채운 표본 */
+function modTexts(mod) {
+  const raw = mod.text;
+  const sample = mod.text.replace(RANGE_RE, '$1');
+  return raw === sample ? [raw] : [raw, sample];
 }
 
 /**
  * 인게임 정규식을 개별 패턴으로 쪼갠다.
- * 인게임 검색은 공백으로 항목을 나누고, 공백이 든 패턴은 "따옴표"로 묶으며,
- * '!'는 부정 접두어다. 여기서는 어떤 모드를 가리키는지만 필요하므로
- * 부정 여부와 따옴표는 벗기고 최상위 '|'로 나뉜 대안을 전부 편다.
+ * 여기서는 어떤 모드를 가리키는지만 필요하므로 부정('!')과 따옴표는 벗기고
+ * 최상위 '|'로 나뉜 대안을 전부 편다.
  */
 function parseRegexInput(input) {
   const patterns = [];
-  const terms = input.match(/(?:[^\s"]+|"[^"]*")+/g) ?? [];
-  for (let term of terms) {
-    if (term.startsWith('!')) term = term.slice(1);
-    term = term.replaceAll('"', '');
-    patterns.push(...splitAlternatives(term));
+  for (const term of splitTerms(input)) {
+    patterns.push(...splitAlternatives(term.pattern));
   }
   return patterns;
 }
 
-/** 패턴 하나가 이 모드의 문구에 걸리는지. 잘못된 정규식은 그냥 불일치로 본다. */
+/** 패턴 하나가 이 모드의 문구에 걸리는지. 문법이 깨진 패턴은 불일치로 본다. */
 function modMatchesPattern(pattern, mod) {
-  let re;
-  try {
-    re = new RegExp(pattern, 'i');
-  } catch {
-    return false;
-  }
-  return modLines(mod).some((line) => re.test(line));
+  const compiled = compileQuery(pattern);
+  if (compiled.errors.length) return false;
+  return modTexts(mod).some((text) => compiled.test(text));
 }
 
 /**
@@ -170,15 +133,13 @@ function matchModsByRegex(input, mods) {
   const invalid = [];
 
   for (const pattern of parseRegexInput(input)) {
-    let re;
-    try {
-      re = new RegExp(pattern, 'i');
-    } catch {
-      invalid.push(pattern);
+    const compiled = compileQuery(pattern);
+    if (compiled.errors.length) {
+      invalid.push({ pattern, message: compiled.errors[0].message });
       continue;
     }
-    const hits = mods.filter((m) => modLines(m).some((line) => re.test(line)));
-    if (hits.length) hits.forEach((m) => matched.add(m));
+    const hits = mods.filter((mod) => modTexts(mod).some((text) => compiled.test(text)));
+    if (hits.length) hits.forEach((mod) => matched.add(mod));
     else unmatched.push(pattern);
   }
 

@@ -28,6 +28,7 @@
       "js": [
         "trade-url.js",
         "search-name.js",
+        "poe-regex.js",
         "map-mods.js",
         "presets.js",
         "trade-query.js",

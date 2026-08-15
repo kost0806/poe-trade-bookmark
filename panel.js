@@ -712,6 +712,14 @@ function applyRegexSelection() {
   }
 
   const { mods, unmatched, invalid } = matchModsByRegex(input, MAP_MODS);
+
+  // 문법이 깨졌으면 어디가 왜 틀렸는지부터 알린다. 인게임에서도 통하지 않을
+  // 정규식이므로 고쳐 쓰는 편이 낫다.
+  if (invalid.length) {
+    const [{ pattern, message }] = invalid;
+    setBuilderStatus(`정규식 오류 — ${pattern}: ${message}`, 'error');
+    return;
+  }
   if (!mods.length) {
     setBuilderStatus('정규식에 매칭되는 맵모드가 없습니다.', 'error');
     return;
@@ -726,12 +734,11 @@ function applyRegexSelection() {
   updateRegex();
   saveBuilderState();
 
-  const skipped = [...invalid, ...unmatched];
   setBuilderStatus(
-    skipped.length
-      ? `정규식에서 ${mods.length}개 모드 선택 (매칭 안 된 패턴: ${skipped.join(', ')})`
+    unmatched.length
+      ? `정규식에서 ${mods.length}개 모드 선택 (매칭 안 된 패턴: ${unmatched.join(', ')})`
       : `정규식에서 ${mods.length}개 모드 선택`,
-    skipped.length ? 'error' : 'ok'
+    unmatched.length ? 'error' : 'ok'
   );
 }
 

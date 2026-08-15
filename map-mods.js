@@ -104,3 +104,8 @@ const MAP_MODS = [
 ];
 
 const MOD_GROUPS = ["기타","몬스터 강화","방어 약화","보스 강화","지역 구성","피해 반사","회복 방해"];
+
+// 브라우저에서는 <script>로 로드되고, 테스트에서는 require로 쓴다.
+if (typeof module !== 'undefined') {
+  module.exports = { MAP_MODS, MOD_GROUPS };
+}
