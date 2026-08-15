@@ -51,9 +51,15 @@ const PANEL_HTML = `
           </div>
           <p id="preset-desc" class="target"></p>
 
-          <input id="mod-search" type="text" autocomplete="off" placeholder="맵모드 검색 (예: 반사, 재생)" />
+          <input id="mod-search" type="text" autocomplete="off" placeholder="맵모드 검색 (예: 반사, 원소.가)" />
 
           <div id="mod-list" class="mod-list"></div>
+
+          <label for="regex-in">정규식으로 선택</label>
+          <div class="row">
+            <input id="regex-in" type="text" autocomplete="off" placeholder="인게임 정규식 붙여넣기 (예: !터는|재사)" />
+            <button type="button" id="apply-regex" class="mini">선택</button>
+          </div>
 
           <label for="regex-out">
             인게임 정규식 <span id="regex-len" class="count"></span>
@@ -472,6 +478,8 @@ const builderArrow = $('builder-arrow');
 const leagueEl = $('league');
 const modSearchEl = $('mod-search');
 const modListEl = $('mod-list');
+const regexInEl = $('regex-in');
+const applyRegexBtn = $('apply-regex');
 const regexOutEl = $('regex-out');
 const regexLenEl = $('regex-len');
 const runSearchBtn = $('run-search');
@@ -514,7 +522,8 @@ function renderMods() {
 
   let group = null;
   for (const mod of MAP_MODS) {
-    if (q && !mod.text.includes(q) && !mod.affix.includes(q)) continue;
+    // 이름·문구 부분일치 외에 인게임 정규식꼴 검색("원소.가")도 받는다.
+    if (q && !mod.text.includes(q) && !mod.affix.includes(q) && !modMatchesPattern(q, mod)) continue;
 
     if (mod.group !== group) {
       group = mod.group;
@@ -689,6 +698,46 @@ $('preset-none').addEventListener('click', () => {
   updateRegex();
   saveBuilderState();
   setBuilderStatus('', null);
+});
+
+/**
+ * 붙여넣은 인게임 정규식에서 거를 모드를 복원해 그대로 선택한다.
+ * 정규식이 선택 전체를 나타내므로 기존 선택은 대체한다.
+ */
+function applyRegexSelection() {
+  const input = regexInEl.value.trim();
+  if (!input) {
+    setBuilderStatus('선택에 쓸 인게임 정규식을 붙여넣으세요.', 'error');
+    return;
+  }
+
+  const { mods, unmatched, invalid } = matchModsByRegex(input, MAP_MODS);
+  if (!mods.length) {
+    setBuilderStatus('정규식에 매칭되는 맵모드가 없습니다.', 'error');
+    return;
+  }
+
+  selected.clear();
+  for (const mod of mods) selected.add(modKey(mod));
+  presetEl.value = '';
+  presetDescEl.textContent = '';
+
+  renderMods();
+  updateRegex();
+  saveBuilderState();
+
+  const skipped = [...invalid, ...unmatched];
+  setBuilderStatus(
+    skipped.length
+      ? `정규식에서 ${mods.length}개 모드 선택 (매칭 안 된 패턴: ${skipped.join(', ')})`
+      : `정규식에서 ${mods.length}개 모드 선택`,
+    skipped.length ? 'error' : 'ok'
+  );
+}
+
+applyRegexBtn.addEventListener('click', applyRegexSelection);
+regexInEl.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') applyRegexSelection();
 });
 
 $('copy-regex').addEventListener('click', async () => {
