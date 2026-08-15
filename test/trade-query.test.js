@@ -16,6 +16,8 @@ Object.assign(globalThis, require('../poe-regex.js'));
 const { MAP_MODS } = require('../map-mods.js');
 Object.assign(globalThis, { MAP_MODS });
 
+const { MAP_MOD_POOL } = require('./map-mod-pool.js');
+
 const {
   buildRegex,
   buildSearchQuery,
@@ -32,14 +34,60 @@ function mod(affix) {
   return found;
 }
 
-test('키워드는 그 모드에만 걸린다', () => {
-  // 목록 전체를 훑어 키워드가 유일한지 본다. 하나라도 겹치면 인게임에서
-  // 엉뚱한 지도가 사라진다.
+test('키워드는 목록 안에서 그 모드에만 걸린다', () => {
+  // 모드 80개를 서로 다 대조한다. 하나라도 겹치면 인게임에서 엉뚱한 지도가 사라진다.
   const collisions = [];
   for (const target of MAP_MODS) {
     const hits = MAP_MODS.filter((m) => modMatchesPattern(target.regex, m));
-    if (hits.length !== 1) {
-      collisions.push(`${target.regex} → ${hits.map((m) => m.affix).join(', ')}`);
+    if (hits.length !== 1 || hits[0] !== target) {
+      collisions.push(`${target.regex} (${target.affix}) → ${hits.map((m) => m.affix).join(', ')}`);
+    }
+  }
+  assert.deepStrictEqual(collisions, []);
+});
+
+test('키워드는 목록 밖 모드에도 걸리지 않는다', () => {
+  /*
+   * 목록끼리만 대조하면 부족하다. 목록은 거를 만한 모드만 담고 있어서, T16 지도에
+   * 실제로 붙는 다른 모드(타락·스컬지·탐광)에 걸리는 사고를 못 잡는다. 인게임
+   * 검색은 아이템 전문을 훑으므로 그런 모드 한 줄에만 걸려도 지도가 사라진다.
+   */
+  const collisions = [];
+  for (const target of MAP_MODS) {
+    for (const entry of MAP_MOD_POOL) {
+      if (!modMatchesPattern(target.regex, entry)) continue;
+      // 풀 항목이 이 모드 자신이면 걸리는 것이 맞다.
+      if (target.text.split('\n').some((line) => entry.text.includes(line))) continue;
+      collisions.push(`${target.regex} (${target.affix}) → [${entry.source}] ${entry.text}`);
+    }
+  }
+  assert.deepStrictEqual(collisions, []);
+});
+
+test('키워드는 모드가 아닌 줄에도 걸리지 않는다', () => {
+  /*
+   * 아이템 전문에는 모드 말고 이름·속성 줄도 있다. 예전에 '종류'가
+   * '아이템 종류: 지도'에 걸려 멀쩡한 지도를 전부 숨긴 적이 있다.
+   */
+  const NON_MOD_LINES = [
+    '아이템 종류: 지도',
+    '희귀도: 희귀',
+    '지도 등급: 16',
+    '아이템 수량: +94% (강화됨)',
+    '아이템 희귀도: +42% (강화됨)',
+    '몬스터 무리 규모: +35% (강화됨)',
+    '아이템 레벨: 83',
+    '지도 장치에서 사용하거나 지도 장치의 아이템 슬롯에 넣으십시오.',
+    '타락됨',
+    '--------',
+  ];
+
+  const collisions = [];
+  for (const target of MAP_MODS) {
+    for (const line of NON_MOD_LINES) {
+      if (modMatchesPattern(target.regex, { text: line })) {
+        collisions.push(`${target.regex} (${target.affix}) → ${line}`);
+      }
     }
   }
   assert.deepStrictEqual(collisions, []);
