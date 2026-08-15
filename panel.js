@@ -57,7 +57,7 @@ const PANEL_HTML = `
 
           <label for="regex-in">정규식으로 선택</label>
           <div class="row">
-            <input id="regex-in" type="text" autocomplete="off" placeholder="인게임 정규식 붙여넣기 (예: !터는|재사)" />
+            <input id="regex-in" type="text" autocomplete="off" placeholder="인게임 정규식 붙여넣기 (예: !대상이|재사용)" />
             <button type="button" id="apply-regex" class="mini">선택</button>
           </div>
 
