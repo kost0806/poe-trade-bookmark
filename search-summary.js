@@ -170,7 +170,7 @@ function summaryLines(summary) {
   }
   for (const range of summary.ranges) lines.push(summaryRow(range));
   for (const group of summary.statGroups) {
-    lines.push(`[${group.title || '능력치'}]`);
+    lines.push(`[${group.title || T().summaryStats}]`);
     for (const row of group.rows) lines.push(summaryRow(row));
   }
   return lines.filter(Boolean);
@@ -181,7 +181,7 @@ function formatSummary(summary, max = SUMMARY_MAX_LINES) {
   const lines = summaryLines(summary);
   if (!lines.length) return '';
   if (lines.length <= max) return lines.join('\n');
-  return [...lines.slice(0, max), `…외 ${lines.length - max}줄`].join('\n');
+  return [...lines.slice(0, max), T().summaryMore(lines.length - max)].join('\n');
 }
 
 // 브라우저에서는 <script>로 로드되고, 테스트에서는 require로 쓴다.

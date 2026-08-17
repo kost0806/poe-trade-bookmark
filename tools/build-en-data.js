@@ -229,7 +229,7 @@ function main() {
   }
 
   /* 4. map-mods.js를 영문으로 옮긴다. */
-  const { MAP_MODS, MOD_GROUPS } = require(path.join(ROOT, 'map-mods.js'));
+  const { MAP_MODS_KO: MAP_MODS, MOD_GROUPS_KO: MOD_GROUPS } = require(path.join(ROOT, 'map-mods.js'));
   const mods = [];
   for (const mod of MAP_MODS) {
     const lines = [];
@@ -352,10 +352,10 @@ function main() {
 const GROUP_EN = {
   기타: 'Misc',
   '몬스터 강화': 'Monster buffs',
-  '방어 약화': 'Defence debuffs',
+  '방어 약화': 'Player debuffs',
   '보스 강화': 'Boss buffs',
   '지역 구성': 'Area composition',
-  '피해 반사': 'Damage reflection',
+  '피해 반사': 'Reflect',
   '회복 방해': 'Recovery denial',
 };
 

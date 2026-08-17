@@ -3,11 +3,13 @@
 영문 클라이언트/거래소를 지원하려고 모은 데이터입니다. `tools/build-en-data.js`가
 만들고, 다시 실행하면 그대로 다시 나옵니다.
 
-확장은 아직 이 파일들을 읽지 않습니다 — 영문 지원을 붙일 때 쓸 재료입니다.
+확장이 실행 중에 읽지는 않습니다. `map-mods-en.js`(확장이 읽는 영문 맵모드 목록)를
+만드는 재료이고, 테스트가 그 목록을 검사하는 근거입니다.
 
 | 파일 | 내용 |
 | --- | --- |
 | `map-mods.json` | `map-mods.js`의 80개 모드를 영문 문구·접두어/접미어 이름으로 옮긴 것 |
+| `../../test/fixtures/en/map-item-lines.json` | 영문 T16 지도 한 장의 전문 (키워드가 걸리면 안 되는 줄) |
 | `../../test/fixtures/en/map-mod-pool.json` | 상위 등급 지도에 붙을 수 있는 모드 전체(86개)의 영문판 |
 | `../../test/fixtures/en/trade-stats.json` | stat id → 영문 문구 대조표(99개) |
 | `../../test/fixtures/en/map-item-names.json` | 지도 칸에 들어가는 아이템의 영문 이름(583개) |
@@ -70,15 +72,22 @@ curl -s https://www.pathofexile.com/api/trade/data/filters -o data/en/search-fil
 `data/search-filters.json`에서 확인했고, 그래서 `trade-query.js`는 영문판에서도
 고칠 곳이 없습니다.
 
-**인게임 정규식 키워드.** `map-mods.js`의 `regex`는 '이 모드에만 걸리는 최단
-부분문자열'이라 언어마다 새로 골라야 합니다. 영문은 아직 고르지 않았습니다. 고를
-때 대조할 재료(영문 모드 풀, 영문 아이템 이름)는 여기 다 있습니다.
+**게임에서 직접 뜬 영문 지도 전문.** `map-item-lines.json`은 공개된 이슈에 붙어 있던
+것을 옮겨 온 것이라, '키워드가 걸리면 안 되는 줄'로만 씁니다. 한글 쪽
+`test/fixtures/real-maps.json`처럼 '이 모드들만 걸려야 한다'를 확인하는 데는 쓰지
+않습니다. 영문 클라이언트에서 T16 희귀 지도를 Ctrl+C 해 넣으면 그 검사까지 할 수
+있습니다.
 
-**패널 문구.** 단추·안내문은 아직 한글입니다. `groups`의 영문 이름(`Misc`,
-`Monster buffs` …)은 GGG 문구가 아니라 이 확장이 모드를 묶어 부르는 이름입니다.
+`groups`의 영문 이름(`Misc`, `Monster buffs` …)은 GGG 문구가 아니라 이 확장이 모드를
+묶어 부르는 이름입니다.
 
 ## 갱신
 
-리그가 바뀌면 `tools/.cache/`를 지우고 `node tools/build-en-data.js`를 다시
-실행합니다. 한글 픽스처(`test/fixtures/map-mod-pool.json`)를 먼저 갱신해야 대조가
-의미 있습니다.
+리그가 바뀌면 `tools/.cache/`를 지우고 아래를 차례로 실행합니다. 한글
+픽스처(`test/fixtures/map-mod-pool.json`)를 먼저 갱신해야 대조가 의미 있습니다.
+
+```sh
+node tools/build-en-data.js       # 여기 파일들
+node tools/build-map-mods-en.js   # map-mods-en.js (키워드 다시 고르기)
+node --test                       # 키워드가 어디에도 안 겹치는지
+```

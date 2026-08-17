@@ -10,7 +10,7 @@
     },
     {
       "ko": "방어 약화",
-      "en": "Defence debuffs"
+      "en": "Player debuffs"
     },
     {
       "ko": "보스 강화",
@@ -22,7 +22,7 @@
     },
     {
       "ko": "피해 반사",
-      "en": "Damage reflection"
+      "en": "Reflect"
     },
     {
       "ko": "회복 방해",

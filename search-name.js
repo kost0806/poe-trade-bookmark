@@ -59,7 +59,7 @@ function titleFromSummary(summary) {
       parts.push(nameRow(group.rows[0]));
       continue;
     }
-    parts.push(group.title ? `${group.title} ${group.rows.length}개` : `능력치 ${group.rows.length}개`);
+    parts.push(T().summaryGroupCount(group.title || T().summaryStats, group.rows.length));
   }
 
   return joinParts(parts);

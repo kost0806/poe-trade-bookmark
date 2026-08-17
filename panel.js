@@ -22,68 +22,77 @@ const HOST_ID = 'poe-trade-bookmark-root';
 // 창이 좁을 때 거래소가 완전히 가려지지 않도록 절반까지만 차지한다.
 const PANEL_WIDTH = 'min(360px, 50vw)';
 
+/*
+ * 뼈대만 둔다. 화면에 보이는 글자는 applyTexts()가 채운다 — 언어를 바꾸면 패널을
+ * 다시 만들지 않고 글자만 갈아 끼우기 위해서다(창을 다시 만들면 걸어 둔 이벤트와
+ * 고르던 내용이 날아간다).
+ */
 const PANEL_HTML = `
   <button type="button" class="toggle" id="toggle"></button>
 
   <div class="panel" id="panel" hidden>
     <div class="body">
-      <h1>PoE Trade Bookmark</h1>
+      <div class="head">
+        <h1>PoE Trade Bookmark</h1>
+        <select id="lang" class="lang"></select>
+      </div>
 
       <section class="card">
-        <p id="status" class="status">현재 페이지를 확인하는 중…</p>
+        <p id="status" class="status"></p>
 
         <form id="add-form" hidden>
-          <label for="title">이름</label>
-          <input id="title" type="text" maxlength="80" autocomplete="off" placeholder="북마크 이름" />
+          <label for="title" id="title-label"></label>
+          <input id="title" type="text" maxlength="80" autocomplete="off" />
           <p id="target" class="target"></p>
-          <button type="submit" id="add-btn">북마크 추가</button>
+          <button type="submit" id="add-btn"></button>
         </form>
       </section>
 
       <section class="card">
         <h2>
           <button type="button" id="builder-toggle" class="section-toggle">
-            <span id="builder-arrow">▶</span> 16T 8모드 검색 만들기
+            <span id="builder-arrow">▶</span> <span id="builder-title"></span>
           </button>
         </h2>
 
         <div id="builder" hidden>
           <div class="row">
-            <select id="league" title="리그"></select>
+            <select id="league"></select>
           </div>
 
-          <button type="button" id="open-mods">거를 모드 고르기</button>
+          <button type="button" id="open-mods"></button>
 
           <label for="regex-out">
-            인게임 정규식 <span id="regex-len" class="count"></span>
+            <span id="regex-label"></span> <span id="regex-len" class="count"></span>
           </label>
           <div class="row">
-            <input id="regex-out" type="text" readonly placeholder="거를 모드를 선택하세요" />
-            <button type="button" id="copy-regex" class="mini">복사</button>
+            <input id="regex-out" type="text" readonly />
+            <button type="button" id="copy-regex" class="mini"></button>
           </div>
 
-          <button type="button" id="run-search">거래소 검색 만들기</button>
+          <button type="button" id="run-search"></button>
           <p id="builder-status" class="status" hidden></p>
         </div>
       </section>
 
       <section class="card list-card">
-        <h2>저장된 북마크 <span id="count" class="count"></span></h2>
+        <h2><span id="bookmarks-title"></span> <span id="count" class="count"></span></h2>
         <ul id="list" class="list"></ul>
-        <p id="empty" class="status" hidden>아직 저장된 북마크가 없습니다.</p>
+        <p id="empty" class="status" hidden></p>
       </section>
 
       <section class="card">
         <h2>
           <button type="button" id="history-toggle" class="section-toggle">
-            <span id="history-arrow">▼</span> 검색 기록 <span id="history-count" class="count"></span>
+            <span id="history-arrow">▼</span> <span id="history-title"></span>
+            <span id="history-count" class="count"></span>
           </button>
         </h2>
 
         <div id="history">
           <ul id="history-list" class="list history-list"></ul>
-          <p id="history-empty" class="status" hidden>거래소에서 직접 검색하면 여기에 쌓입니다.</p>
-          <button type="button" id="history-clear" class="mini wide" hidden>기록 비우기</button>
+          <p id="history-empty" class="status" hidden></p>
+          <button type="button" id="history-clear" class="mini wide" hidden></button>
         </div>
       </section>
     </div>
@@ -96,31 +105,31 @@ const PANEL_HTML = `
   <div class="modal" id="mod-modal" hidden>
     <div class="modal-back" id="mod-back"></div>
 
-    <div class="modal-box" role="dialog" aria-modal="true" aria-label="거를 맵모드 고르기">
+    <div class="modal-box" role="dialog" aria-modal="true" id="mod-dialog">
       <div class="modal-head">
-        <h2>거를 맵모드 고르기</h2>
-        <button type="button" id="mod-close" class="mini">닫기 (Esc)</button>
+        <h2 id="mod-title"></h2>
+        <button type="button" id="mod-close" class="mini"></button>
       </div>
 
       <!-- 찾는 줄: 검색과 프리셋 -->
       <div class="modal-tools">
-        <input id="mod-search" type="text" autocomplete="off" placeholder="모드 검색 — 문구, 접두어 이름, 정규식(예: 반사, 원소.가)" />
-        <select id="preset" title="프리셋"></select>
-        <button type="button" id="preset-save" class="mini" title="지금 고른 모드를 프리셋으로 저장">저장…</button>
-        <button type="button" id="preset-delete" class="mini" title="고른 내 프리셋 지우기">삭제</button>
+        <input id="mod-search" type="text" autocomplete="off" />
+        <select id="preset"></select>
+        <button type="button" id="preset-save" class="mini"></button>
+        <button type="button" id="preset-delete" class="mini"></button>
       </div>
 
       <!-- 이름 짓는 줄: 저장…을 눌렀을 때만 나온다 -->
       <div class="modal-tools" id="preset-save-row" hidden>
-        <input id="preset-name" type="text" maxlength="40" autocomplete="off" placeholder="프리셋 이름 — 지금 고른 모드를 이 이름으로 저장합니다" />
-        <button type="button" id="preset-save-ok" class="mini">저장</button>
-        <button type="button" id="preset-save-cancel" class="mini">취소</button>
+        <input id="preset-name" type="text" maxlength="40" autocomplete="off" />
+        <button type="button" id="preset-save-ok" class="mini"></button>
+        <button type="button" id="preset-save-cancel" class="mini"></button>
       </div>
 
       <!-- 붙여넣는 줄: 인게임 정규식으로 한 번에 선택 -->
       <div class="modal-tools">
-        <input id="regex-in" type="text" autocomplete="off" placeholder="인게임 정규식을 붙여넣어 한 번에 선택 (예: !대상이|재사용)" />
-        <button type="button" id="apply-regex" class="mini">정규식으로 선택</button>
+        <input id="regex-in" type="text" autocomplete="off" />
+        <button type="button" id="apply-regex" class="mini"></button>
       </div>
 
       <p id="preset-desc" class="target"></p>
@@ -128,19 +137,19 @@ const PANEL_HTML = `
 
       <!-- 목록 머리: 지금 몇 개를 골랐고, 무엇을 보여줄지 -->
       <div class="modal-strip">
-        <span id="mod-count" class="count">아직 고른 모드 없음</span>
-        <div class="seg" role="group" aria-label="목록에 보일 모드">
-          <button type="button" id="view-all" class="seg-btn on" aria-pressed="true">전체</button>
-          <button type="button" id="view-selected" class="seg-btn" aria-pressed="false">고른 것만</button>
+        <span id="mod-count" class="count"></span>
+        <div class="seg" role="group" id="mod-view">
+          <button type="button" id="view-all" class="seg-btn on" aria-pressed="true"></button>
+          <button type="button" id="view-selected" class="seg-btn" aria-pressed="false"></button>
         </div>
-        <button type="button" id="preset-none" class="mini push">전체 해제</button>
+        <button type="button" id="preset-none" class="mini push"></button>
       </div>
 
       <div id="mod-list" class="mod-grid"></div>
 
       <div class="modal-foot">
         <span id="mod-regex" class="modal-regex"></span>
-        <button type="button" id="mod-done">완료</button>
+        <button type="button" id="mod-done"></button>
       </div>
     </div>
   </div>
@@ -227,7 +236,7 @@ function renderPanel() {
   wrapEl.classList.toggle('open', open);
   // 라벨 없이 화살표만 — 여는 쪽(왼쪽), 접는 쪽(오른쪽)을 그대로 가리킨다.
   toggleEl.textContent = open ? '▶' : '◀';
-  toggleEl.title = open ? '북마크 사이드바 접기' : '북마크 사이드바 열기';
+  toggleEl.title = open ? T().collapse : T().expand;
   toggleEl.setAttribute('aria-label', toggleEl.title);
   toggleEl.setAttribute('aria-expanded', String(open));
   pushPage(open);
@@ -266,7 +275,7 @@ function setStatus(message, kind) {
 }
 
 function formatDate(ts) {
-  return new Date(ts).toLocaleDateString('ko-KR', {
+  return new Date(ts).toLocaleDateString(T().locale, {
     year: '2-digit',
     month: '2-digit',
     day: '2-digit',
@@ -275,7 +284,7 @@ function formatDate(ts) {
 
 /** 기록은 같은 날 여러 번 쌓이므로 시각까지 보여 준다. */
 function formatTime(ts) {
-  return new Date(ts).toLocaleString('ko-KR', {
+  return new Date(ts).toLocaleString(T().locale, {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
@@ -283,7 +292,7 @@ function formatTime(ts) {
   });
 }
 
-const modeLabel = (mode) => (mode === 'exchange' ? '대량거래' : '검색');
+const modeLabel = (mode) => (mode === 'exchange' ? T().modeExchange : T().modeSearch);
 
 /** 패널이 거래소 안에서만 살아 있으므로 항상 이 탭에서 그대로 이동한다. */
 async function openRecord(record) {
@@ -334,12 +343,12 @@ function renderList(bookmarks) {
       const copy = document.createElement('button');
       copy.type = 'button';
       copy.className = 'item-delete';
-      copy.textContent = '정규식';
-      copy.title = `인게임 정규식 복사\n${bookmark.regex}`;
+      copy.textContent = T().copyRegexLabel;
+      copy.title = T().copyRegexTitle(bookmark.regex);
       copy.addEventListener('click', async () => {
         await navigator.clipboard.writeText(bookmark.regex);
-        copy.textContent = '복사됨';
-        setTimeout(() => (copy.textContent = '정규식'), 1200);
+        copy.textContent = T().copied;
+        setTimeout(() => (copy.textContent = T().copyRegexLabel), 1200);
       });
       li.append(copy);
     }
@@ -347,8 +356,8 @@ function renderList(bookmarks) {
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'item-delete';
-    del.textContent = '삭제';
-    del.title = '북마크 삭제';
+    del.textContent = T().deleteLabel;
+    del.title = T().deleteBookmark;
     del.addEventListener('click', async () => {
       const remaining = (await getBookmarks()).filter((b) => b.id !== bookmark.id);
       await setBookmarks(remaining);
@@ -455,8 +464,8 @@ function renderHistory(history) {
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'item-delete';
-    del.textContent = '삭제';
-    del.title = '기록에서 지우기';
+    del.textContent = T().deleteLabel;
+    del.title = T().removeFromHistory;
     del.addEventListener('click', async () => {
       await setHistory((await getHistory()).filter((h) => h.id !== entry.id));
     });
@@ -555,10 +564,10 @@ function watchSearch() {
 function syncButton() {
   const name = titleEl.value.trim();
   if (savedBookmark) {
-    addBtn.textContent = '이름 변경';
+    addBtn.textContent = T().rename;
     addBtn.disabled = name === '' || name === savedBookmark.title;
   } else {
-    addBtn.textContent = '북마크 추가';
+    addBtn.textContent = T().addBookmark;
     addBtn.disabled = false;
   }
 }
@@ -571,13 +580,13 @@ async function renderForm() {
   syncButton();
 
   if (!current) {
-    setStatus('거래소 검색 페이지에서 저장할 수 있습니다.', 'error');
+    setStatus(T().notTradePage, 'error');
     formEl.hidden = true;
     return;
   }
 
   if (!current.searchId) {
-    setStatus('검색을 실행한 뒤(주소에 검색 ID가 생긴 뒤) 저장해 주세요.', 'error');
+    setStatus(T().noSearchId, 'error');
     formEl.hidden = true;
     return;
   }
@@ -587,11 +596,11 @@ async function renderForm() {
 
   savedBookmark = (await getBookmarks()).find((b) => b.url === current.url) ?? null;
   if (savedBookmark) {
-    setStatus('이미 저장된 검색입니다. 이름을 고치면 바꿀 수 있습니다.', null);
+    setStatus(T().alreadySaved, null);
     titleEl.value = savedBookmark.title;
   } else if (pending && pending.url === current.url) {
     // 방금 8모드 빌더로 만든 검색 — 이름과 정규식을 미리 채워 둔다.
-    setStatus('저장하면 인게임 정규식도 함께 보관됩니다.', null);
+    setStatus(T().savedWithRegex, null);
     titleEl.value = pending.title;
   } else {
     setStatus('', null);
@@ -649,7 +658,7 @@ formEl.addEventListener('submit', async (event) => {
       ...(hasSummary(currentSummary) ? { summary: currentSummary } : {}),
     };
     updated = bookmarks.map((b) => (b.id === existing.id ? record : b));
-    message = `이름을 "${name}"(으)로 바꿨습니다.`;
+    message = T().renamed(name);
   } else {
     const built = pending && pending.url === current.url ? pending : null;
     record = {
@@ -666,7 +675,7 @@ formEl.addEventListener('submit', async (event) => {
       ...(built ? { regex: built.regex } : {}),
     };
     updated = [record, ...bookmarks];
-    message = '북마크를 추가했습니다.';
+    message = T().bookmarkAdded;
     if (built) await clearPending();
   }
 
@@ -696,6 +705,12 @@ setInterval(() => {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
 
+  // 다른 탭에서 언어를 바꿨을 때.
+  if (changes[LANG_KEY] && changes[LANG_KEY].newValue !== langSetting) {
+    applyLanguage(changes[LANG_KEY].newValue ?? 'auto');
+    return;
+  }
+
   if (changes[HISTORY_KEY]) renderHistory(changes[HISTORY_KEY].newValue ?? []);
 
   // 다른 탭에서 저장하거나 지운 프리셋도 바로 목록에 반영한다.
@@ -718,7 +733,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 /* ---------------- 16T 8모드 검색 만들기 ---------------- */
 
 // DEFAULT_LEAGUE / REGEX_MAX / buildRegex / buildSearchQuery 는 trade-query.js 전역
-const FALLBACK_LEAGUES = [{ id: 'Allflame', text: '올플레임' }, { id: 'Standard', text: 'Standard' }];
+const FALLBACK_LEAGUES = [{ id: 'Allflame', text: 'Allflame' }, { id: 'Standard', text: 'Standard' }];
 // 계정 한도가 5초당 3회다. 버튼 연타로 한도를 태우지 않도록 최소 간격을 둔다.
 const SEARCH_COOLDOWN_MS = 2500;
 // 만든 검색으로 이동하면 페이지가 다시 로드된다. 그 사이 정규식을 잃지 않도록
@@ -750,6 +765,9 @@ const modRegexEl = $('mod-regex');
 const viewAllBtn = $('view-all');
 const viewSelectedBtn = $('view-selected');
 const modalStatusEl = $('modal-status');
+
+// 지금 언어의 맵모드 목록. 언어를 바꾸면 갈아 끼운다(applyLanguage).
+let MAP_MODS = [];
 
 const selected = new Set(); // 거를 모드 키
 let onlySelected = false; // 창의 목록에 고른 모드만 보이기
@@ -839,7 +857,7 @@ function renderMods() {
       const star = document.createElement('span');
       star.className = 'rec';
       star.textContent = ' ★';
-      star.title = '흔히 거르는 모드';
+      star.title = T().commonlyExcluded;
       text.append(star);
     }
 
@@ -856,7 +874,7 @@ function renderMods() {
   if (!shown) {
     const none = document.createElement('p');
     none.className = 'status mod-none';
-    none.textContent = onlySelected ? '고른 모드가 없습니다.' : '검색과 맞는 모드가 없습니다.';
+    none.textContent = onlySelected ? T().noneSelected : T().noModsMatch;
     modListEl.append(none);
   }
 }
@@ -866,16 +884,11 @@ function updateRegex() {
   regexOutEl.value = regex;
   regexLenEl.textContent = regex ? `${regex.length} / ${REGEX_MAX}` : '';
   regexLenEl.className = regex.length > REGEX_MAX ? 'count over' : 'count';
-  runSearchBtn.textContent = selected.size
-    ? `거래소 검색 만들기 (${selected.size}개 거름)`
-    : '거래소 검색 만들기';
-
-  openModsBtn.textContent = selected.size
-    ? `거를 모드 고르기 (${selected.size}개 고름)`
-    : '거를 모드 고르기';
-  modCountEl.textContent = selected.size ? `${selected.size}개 고름` : '아직 고른 모드 없음';
+  runSearchBtn.textContent = selected.size ? T().runSearchWith(selected.size) : T().runSearch;
+  openModsBtn.textContent = selected.size ? T().pickModsWith(selected.size) : T().pickMods;
+  modCountEl.textContent = selected.size ? T().pickedCount(selected.size) : T().nonePicked;
   // 창을 닫지 않아도 정규식이 어떻게 자라는지 보이게 한다.
-  modRegexEl.textContent = regex ? `${regex}  (${regex.length}/${REGEX_MAX}자)` : '';
+  modRegexEl.textContent = regex ? `${regex}  ${T().regexChars(regex.length, REGEX_MAX)}` : '';
   modRegexEl.className = regex.length > REGEX_MAX ? 'modal-regex over' : 'modal-regex';
 }
 
@@ -906,7 +919,7 @@ async function runSearch() {
   const mods = selectedMods();
   const wait = SEARCH_COOLDOWN_MS - (Date.now() - lastSearchAt);
   if (wait > 0) {
-    setBuilderStatus(`거래소 요청 제한 때문에 ${Math.ceil(wait / 1000)}초 후에 다시 눌러주세요.`, 'error');
+    setBuilderStatus(T().searchCooldown(Math.ceil(wait / 1000)), 'error');
     return;
   }
 
@@ -916,7 +929,7 @@ async function runSearch() {
   const query = buildSearchQuery({ modIds: mods.flatMap((m) => m.ids) });
 
   runSearchBtn.disabled = true;
-  setBuilderStatus('거래소에 검색을 등록하는 중…', null);
+  setBuilderStatus(T().searchSubmitting, null);
   lastSearchAt = Date.now();
 
   try {
@@ -929,17 +942,17 @@ async function runSearch() {
 
     if (res.status === 429) {
       const retry = res.headers.get('Retry-After');
-      setBuilderStatus(`거래소 요청 한도 초과. ${retry ?? '잠시'}초 후 다시 시도하세요.`, 'error');
+      setBuilderStatus(T().searchRateLimited(retry ?? T().searchRateLimitedSoon), 'error');
       return;
     }
     if (!res.ok) {
-      setBuilderStatus(`검색 실패 (HTTP ${res.status}). 거래소 로그인 상태를 확인하세요.`, 'error');
+      setBuilderStatus(T().searchFailedHttp(res.status), 'error');
       return;
     }
 
     const body = await res.json();
     if (!body.id) {
-      setBuilderStatus(`검색 실패: ${body.error?.message ?? '알 수 없는 응답'}`, 'error');
+      setBuilderStatus(T().searchFailed(body.error?.message ?? T().unknownResponse), 'error');
       return;
     }
 
@@ -947,14 +960,14 @@ async function runSearch() {
     // 이동하면 이 스크립트도 다시 시작하므로 먼저 맡겨 두고 움직인다.
     await savePending({
       url,
-      title: `16T 8모드 (${mods.length}개 거름)`,
+      title: T().builtTitle(mods.length),
       regex: buildRegex(mods),
       at: Date.now(),
     });
-    setBuilderStatus(`검색 결과 ${body.total ?? 0}개. 검색 결과로 이동합니다…`, 'ok');
+    setBuilderStatus(T().searchDone(body.total ?? 0), 'ok');
     location.assign(url);
   } catch (e) {
-    setBuilderStatus(`요청 중 오류: ${e.message}`, 'error');
+    setBuilderStatus(T().requestError(e.message), 'error');
   } finally {
     runSearchBtn.disabled = false;
   }
@@ -1037,8 +1050,11 @@ async function setUserPresets(presets) {
 }
 
 const isUserPreset = (id) => typeof id === 'string' && id.startsWith(USER_PRESET_PREFIX);
-const userPresetDesc = (preset) =>
-  `내 프리셋 · ${preset.keys.length}개 · ${formatDate(preset.at)}`;
+
+/** 기본 프리셋은 두 언어를 함께 들고 있다. 내 프리셋은 사용자가 지은 이름 하나뿐이다. */
+const presetLabel = (preset) => (uiLang === 'en' && preset.labelEn) || preset.label;
+const presetDesc = (preset) => (uiLang === 'en' && preset.descEn) || preset.desc;
+const userPresetDesc = (preset) => T().presetDesc(preset.keys.length, formatDate(preset.at));
 
 /** 두 출처를 한 자리에서 찾는다. id가 겹치지 않으므로 어느 쪽인지 물을 필요가 없다. */
 function presetById(id) {
@@ -1053,16 +1069,16 @@ function presetById(id) {
 function renderPresets() {
   const keep = presetEl.value;
   presetEl.textContent = '';
-  presetEl.append(new Option('프리셋…', ''));
+  presetEl.append(new Option(T().presetPlaceholder, ''));
 
   const builtin = document.createElement('optgroup');
-  builtin.label = '기본';
-  for (const preset of PRESETS) builtin.append(new Option(preset.label, preset.id));
+  builtin.label = T().presetBuiltin;
+  for (const preset of PRESETS) builtin.append(new Option(presetLabel(preset), preset.id));
   presetEl.append(builtin);
 
   if (userPresets.length) {
     const mine = document.createElement('optgroup');
-    mine.label = '내 프리셋';
+    mine.label = T().presetMine;
     for (const preset of userPresets) mine.append(new Option(preset.label, preset.id));
     presetEl.append(mine);
   }
@@ -1084,7 +1100,7 @@ function closePresetSave() {
 
 function openPresetSave() {
   if (!selected.size) {
-    setBuilderStatus('고른 모드가 없습니다. 거를 모드를 먼저 고르세요.', 'error');
+    setBuilderStatus(T().presetNeedSelection, 'error');
     return;
   }
   // 내 프리셋을 고른 채라면 그 이름을 채워 둔다 — 같은 이름으로 저장하면 덮어쓴다.
@@ -1098,15 +1114,15 @@ function openPresetSave() {
 async function savePreset() {
   const label = presetNameEl.value.trim();
   if (!selected.size) {
-    setBuilderStatus('고른 모드가 없습니다. 거를 모드를 먼저 고르세요.', 'error');
+    setBuilderStatus(T().presetNeedSelection, 'error');
     return;
   }
   if (!label) {
-    setBuilderStatus('프리셋 이름을 적어 주세요.', 'error');
+    setBuilderStatus(T().presetNeedName, 'error');
     return;
   }
-  if (PRESETS.some((p) => p.label === label)) {
-    setBuilderStatus(`'${label}'은(는) 기본 프리셋 이름입니다. 다른 이름을 쓰세요.`, 'error');
+  if (PRESETS.some((p) => presetLabel(p) === label)) {
+    setBuilderStatus(T().presetNameTaken(label), 'error');
     return;
   }
 
@@ -1130,7 +1146,9 @@ async function savePreset() {
   syncPresetButtons();
   presetDescEl.textContent = userPresetDesc(record);
   setBuilderStatus(
-    `프리셋 '${label}'을(를) ${existing ? '덮어썼습니다' : '저장했습니다'} (${record.keys.length}개)`,
+    existing
+      ? T().presetOverwritten(label, record.keys.length)
+      : T().presetSaved(label, record.keys.length),
     'ok'
   );
 }
@@ -1147,7 +1165,7 @@ async function deletePreset() {
   presetDescEl.textContent = '';
   syncPresetButtons();
   // 목록에서만 지운다. 지금 고른 모드까지 풀어 버리면 되돌릴 방법이 없다.
-  setBuilderStatus(`프리셋 '${preset.label}'을(를) 지웠습니다. 고른 모드는 그대로입니다.`, 'ok');
+  setBuilderStatus(T().presetDeleted(preset.label), 'ok');
 }
 
 presetSaveBtn.addEventListener('click', openPresetSave);
@@ -1177,15 +1195,15 @@ function applyPreset(id) {
   saveBuilderState();
   setBuilderStatus(
     missing
-      ? `${preset.label}: ${selected.size}개 적용 (모드 목록에 없는 ${missing}개는 건너뜀)`
-      : `${preset.label}: ${selected.size}개 적용`,
+      ? T().presetAppliedPartly(presetLabel(preset), selected.size, missing)
+      : T().presetApplied(presetLabel(preset), selected.size),
     missing ? 'error' : 'ok'
   );
 }
 
 presetEl.addEventListener('change', () => {
   applyPreset(presetEl.value);
-  presetDescEl.textContent = presetById(presetEl.value)?.desc ?? '';
+  presetDescEl.textContent = presetDescOf(presetEl.value);
   syncPresetButtons();
 });
 
@@ -1207,7 +1225,7 @@ $('preset-none').addEventListener('click', () => {
 function applyRegexSelection() {
   const input = regexInEl.value.trim();
   if (!input) {
-    setBuilderStatus('선택에 쓸 인게임 정규식을 붙여넣으세요.', 'error');
+    setBuilderStatus(T().regexNeeded, 'error');
     return;
   }
 
@@ -1217,11 +1235,11 @@ function applyRegexSelection() {
   // 정규식이므로 고쳐 쓰는 편이 낫다.
   if (invalid.length) {
     const [{ pattern, message }] = invalid;
-    setBuilderStatus(`정규식 오류 — ${pattern}: ${message}`, 'error');
+    setBuilderStatus(T().regexError(pattern, message), 'error');
     return;
   }
   if (!mods.length) {
-    setBuilderStatus('정규식에 매칭되는 맵모드가 없습니다.', 'error');
+    setBuilderStatus(T().regexNoMods, 'error');
     return;
   }
 
@@ -1236,8 +1254,8 @@ function applyRegexSelection() {
 
   setBuilderStatus(
     unmatched.length
-      ? `정규식에서 ${mods.length}개 모드 선택 (매칭 안 된 패턴: ${unmatched.join(', ')})`
-      : `정규식에서 ${mods.length}개 모드 선택`,
+      ? T().regexAppliedPartly(mods.length, unmatched.join(', '))
+      : T().regexApplied(mods.length),
     unmatched.length ? 'error' : 'ok'
   );
 }
@@ -1250,7 +1268,7 @@ regexInEl.addEventListener('keydown', (event) => {
 $('copy-regex').addEventListener('click', async () => {
   if (!regexOutEl.value) return;
   await navigator.clipboard.writeText(regexOutEl.value);
-  setBuilderStatus('정규식을 복사했습니다.', 'ok');
+  setBuilderStatus(T().regexCopied, 'ok');
 });
 
 async function initBuilder() {
@@ -1277,11 +1295,122 @@ async function initBuilder() {
   updateRegex();
 }
 
+
+/* ---------------- 언어 ---------------- */
+
+/*
+ * 언어는 자동/한글/English 셋 중 하나로 저장한다(`lang.js`). 자동이면 지금 보고
+ * 있는 거래소의 호스트로 정한다 — 한국 서버면 한글, 나머지는 영문이다.
+ *
+ * 언어를 바꿔도 고른 모드와 프리셋은 그대로다. 둘 다 모드를 stat id로 담고, 두
+ * 맵모드 목록이 같은 순서·같은 id이기 때문이다.
+ */
+
+const langEl = $('lang');
+
+let langSetting = 'auto';
+
+/** 고른 프리셋의 설명. 기본 프리셋은 언어에 맞는 것을 고른다. */
+function presetDescOf(id) {
+  const preset = presetById(id);
+  if (!preset) return '';
+  return isUserPreset(preset.id) ? preset.desc : presetDesc(preset);
+}
+
+/** 화면에 보이는 글자를 지금 언어로 채운다. 패널을 다시 만들지 않는다. */
+function applyTexts() {
+  const t = T();
+
+  // 언어 고르개 자신 — 고른 값은 유지하고 이름만 갈아 끼운다.
+  langEl.textContent = '';
+  langEl.append(new Option(t.langAuto, 'auto'), new Option('한글', 'ko'), new Option('English', 'en'));
+  langEl.value = langSetting;
+  langEl.title = t.langLabel;
+  langEl.setAttribute('aria-label', t.langLabel);
+
+  // 사이드바
+  $('title-label').textContent = t.nameLabel;
+  titleEl.placeholder = t.namePlaceholder;
+  $('bookmarks-title').textContent = t.bookmarks;
+  emptyEl.textContent = t.noBookmarks;
+  $('history-title').textContent = t.history;
+  historyEmptyEl.textContent = t.noHistory;
+  historyClearEl.textContent = t.clearHistory;
+
+  // 8모드 빌더
+  $('builder-title').textContent = t.builder;
+  leagueEl.title = t.league;
+  leagueEl.setAttribute('aria-label', t.league);
+  $('regex-label').textContent = t.inGameRegex;
+  regexOutEl.placeholder = t.regexPlaceholder;
+  $('copy-regex').textContent = t.copy;
+
+  // 모드 고르기 창
+  $('mod-dialog').setAttribute('aria-label', t.pickModsTitle);
+  $('mod-title').textContent = t.pickModsTitle;
+  $('mod-close').textContent = t.close;
+  modSearchEl.placeholder = t.modSearchPlaceholder;
+  presetEl.title = t.presets;
+  presetEl.setAttribute('aria-label', t.presets);
+  presetSaveBtn.textContent = t.presetSave;
+  presetSaveBtn.title = t.presetSaveTitle;
+  presetDeleteBtn.textContent = t.presetDelete;
+  presetDeleteBtn.title = t.presetDeleteTitle;
+  presetNameEl.placeholder = t.presetNamePlaceholder;
+  $('preset-save-ok').textContent = t.save;
+  $('preset-save-cancel').textContent = t.cancel;
+  regexInEl.placeholder = t.regexInPlaceholder;
+  applyRegexBtn.textContent = t.applyRegex;
+  $('mod-view').setAttribute('aria-label', t.modListLabel);
+  viewAllBtn.textContent = t.viewAll;
+  viewSelectedBtn.textContent = t.viewSelected;
+  $('preset-none').textContent = t.clearAll;
+  $('mod-done').textContent = t.done;
+}
+
+/** 설정값을 받아 문구·맵모드 목록·정규식 오류 문구를 그 언어로 맞춘다. */
+function useLang(setting) {
+  langSetting = LANG_OPTIONS.includes(setting) ? setting : 'auto';
+  const lang = resolveLang(langSetting, location.hostname);
+  setLang(lang); // lang.js — 화면 문구와 poe-regex.js의 오류 문구
+  MAP_MODS = mapModsFor(lang).mods;
+}
+
+/**
+ * 언어를 정하고 화면을 다시 그린다.
+ *
+ * 맵모드 목록이 통째로 바뀌므로 모드 목록과 정규식도 다시 만든다. 고른 모드는
+ * id로 담겨 있어 그대로 살아남고, 정규식만 그 언어의 키워드로 새로 나온다.
+ */
+async function applyLanguage(setting) {
+  useLang(setting);
+  applyTexts();
+  renderPanel();
+  renderList(await getBookmarks());
+  renderHistory(await getHistory());
+  renderPresets();
+  presetDescEl.textContent = presetDescOf(presetEl.value);
+  renderMods();
+  updateRegex();
+  await refresh({ force: true });
+}
+
+langEl.addEventListener('change', async () => {
+  const setting = langEl.value;
+  await chrome.storage.local.set({ [LANG_KEY]: setting });
+  await applyLanguage(setting);
+});
+
 (async function init() {
   await applyStyles();
 
   // 기본은 접힌 상태 — 거래소 화면을 좁히지 않도록 손잡이만 띄운다.
-  const stored = await chrome.storage.local.get([PANEL_OPEN_KEY, HISTORY_OPEN_KEY]);
+  const stored = await chrome.storage.local.get([PANEL_OPEN_KEY, HISTORY_OPEN_KEY, LANG_KEY]);
+
+  // 언어부터 정한다. 아래에서 그리는 글자가 전부 여기에 매인다.
+  useLang(stored[LANG_KEY]);
+  applyTexts();
+  setStatus(T().checking, null);
   panelEl.hidden = stored[PANEL_OPEN_KEY] !== true;
   renderPanel();
 

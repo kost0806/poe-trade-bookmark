@@ -1,19 +1,26 @@
 /**
  * 거를 맵모드 프리셋.
  *
- * key는 map-mods.js 항목의 ids를 쉼표로 이은 값(모드 식별자)이다.
+ * key는 map-mods.js 항목의 ids를 쉼표로 이은 값(모드 식별자)이다. 언어와 무관한
+ * 값이라, 화면 언어를 바꿔도 프리셋은 그대로 쓸 수 있다.
+ *
+ * 보이는 이름과 설명만 언어별로 둔다(`labelEn`/`descEn`). 없으면 한글이 그대로 뜬다.
  */
 const PRESETS = [
   {
     id: 'rec',
     label: '일반 추천',
+    labelEn: 'Common picks',
     desc: '빌드와 무관하게 8모드 지도에서 흔히 거르는 모드',
+    descEn: 'Mods most people exclude on 8-mod maps, whatever the build',
     keys: null, // map-mods.js의 rec 플래그를 사용
   },
   {
     id: 'winter-orb',
     label: '내 빌드 (윈터 오브)',
+    labelEn: 'My build (Winter Orb)',
     desc: '엘리멘탈리스트 냉기 주문 · 치명타 100% · 흡수/주문억제 미사용',
+    descEn: 'Elementalist cold spells · 100% crit · no leech, no spell suppression',
     keys: [
     // 희귀 몬스터가 원소 가시를 보유하고 1500의 원소 피해 반사 — 냉기 주문 딜러 — 원소 반사가 자해로 직결
     "explicit.stat_3938822425",

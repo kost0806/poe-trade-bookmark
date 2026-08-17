@@ -10,6 +10,9 @@
  *
  * 이 요청은 페이지와 다른 출처로 나가고 거래소 API는 CORS 헤더를 주지 않으므로
  * 콘텐츠 스크립트에서는 보낼 수 없다. host_permissions를 가진 여기서 대신 보낸다.
+ *
+ * 실패는 글자가 아니라 까닭(code)으로 돌려준다. 화면 언어는 탭마다 다를 수 있고
+ * (`lang.js`), 서비스 워커는 그것을 모른다. 글자로 바꾸는 일은 copy-en.js가 한다.
  */
 
 const EN_ORIGIN = 'https://www.pathofexile.com';
@@ -26,7 +29,7 @@ function decodeItemText(encoded) {
 
 /**
  * 아이템 하나의 영문 텍스트를 가져온다.
- * 성공하면 { ok: true, text }, 실패하면 { ok: false, error }를 돌려준다.
+ * 성공하면 { ok: true, text }, 실패하면 { ok: false, code, detail }을 돌려준다.
  *
  * query 파라미터(검색 ID)는 붙이지 않는다. 한국 서버의 검색 ID는 영문 거래소에
  * 없고, fetch는 검색 ID 없이도 아이템을 돌려준다.
@@ -39,40 +42,40 @@ async function fetchEnglishItem(itemId) {
       credentials: 'omit',
     });
   } catch (e) {
-    return { ok: false, error: `영문 거래소에 연결하지 못했습니다. (${e.message})` };
+    return { ok: false, code: 'offline', detail: e.message };
   }
 
   if (res.status === 429) {
     // 아이템 조회 한도는 IP 기준 5분당 50회다. 넘기면 잠시 막힌다.
     const retry = res.headers.get('Retry-After');
-    return { ok: false, error: `요청 한도 초과. ${retry ?? '잠시'}초 후 다시 시도하세요.` };
+    return { ok: false, code: 'rateLimit', detail: retry };
   }
   if (!res.ok) {
-    return { ok: false, error: `영문 정보를 가져오지 못했습니다. (HTTP ${res.status})` };
+    return { ok: false, code: 'http', detail: res.status };
   }
 
   let body;
   try {
     body = await res.json();
   } catch {
-    return { ok: false, error: '영문 거래소가 알 수 없는 응답을 보냈습니다.' };
+    return { ok: false, code: 'badResponse' };
   }
 
   const item = body.result?.[0]?.item;
   if (!item) {
     // 판매가 내려갔거나, 아직 영문 거래소에 올라오지 않은 아이템.
-    return { ok: false, error: '영문 거래소에서 이 아이템을 찾지 못했습니다.' };
+    return { ok: false, code: 'notFound' };
   }
 
   const encoded = item.extended?.text;
   if (!encoded) {
-    return { ok: false, error: '이 아이템은 영문 텍스트가 제공되지 않습니다.' };
+    return { ok: false, code: 'noText' };
   }
 
   try {
     return { ok: true, text: decodeItemText(encoded) };
   } catch (e) {
-    return { ok: false, error: `영문 텍스트를 읽지 못했습니다. (${e.message})` };
+    return { ok: false, code: 'decode', detail: e.message };
   }
 }
 

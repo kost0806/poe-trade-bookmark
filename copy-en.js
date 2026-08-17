@@ -21,7 +21,6 @@
   const MARK = 'ptbEn';
 
   const LABEL = 'EN';
-  const TITLE = '영문 아이템 정보 복사 (PoB 붙여넣기용)';
   // 복사됨/오류 표시를 잠깐 보여 준 뒤 원래 라벨로 되돌린다.
   const FLASH_MS = 1400;
   // 결과가 바뀔 때마다 훑지 않도록 잠깐 모아서 한 번에 처리한다.
@@ -30,6 +29,25 @@
   // 같은 아이템을 다시 누를 때 요청을 아낀다. 아이템 텍스트는 변하지 않는다.
   const cache = new Map(); // itemId -> 영문 텍스트
   const inFlight = new Map(); // itemId -> Promise (연타로 중복 요청하지 않도록)
+
+  /**
+   * 서비스 워커가 돌려준 까닭을 지금 화면 언어의 글자로 바꾼다.
+   * (까닭만 돌려주는 이유는 background.js에 적어 두었다.)
+   */
+  function errorText({ code, detail }) {
+    const t = T();
+    switch (code) {
+      case 'reloaded': return t.copyEnReloaded;
+      case 'offline': return t.copyEnOffline(detail);
+      case 'rateLimit': return t.copyEnRateLimit(detail ?? t.searchRateLimitedSoon);
+      case 'http': return t.copyEnHttp(detail);
+      case 'badResponse': return t.copyEnBadResponse;
+      case 'notFound': return t.copyEnNotFound;
+      case 'noText': return t.copyEnNoText;
+      case 'decode': return t.copyEnDecode(detail);
+      default: return t.copyEnFailed;
+    }
+  }
 
   /** 대량거래(exchange)는 통화 묶음이라 붙일 이유가 없다. 일반 검색에서만 붙인다. */
   function onSearchPage() {
@@ -46,9 +64,9 @@
         res = await chrome.runtime.sendMessage({ type: 'fetchEnglishItem', itemId });
       } catch {
         // 확장을 새로 로드하면 페이지에 남은 스크립트는 연결이 끊긴다.
-        return { ok: false, error: '확장을 새로고침했습니다. 페이지를 새로 열어주세요.' };
+        return { ok: false, code: 'reloaded' };
       }
-      if (!res) return { ok: false, error: '영문 정보를 가져오지 못했습니다.' };
+      if (!res) return { ok: false, code: 'noAnswer' };
       if (res.ok) cache.set(itemId, res.text);
       return res;
     })();
@@ -106,7 +124,7 @@
       button,
       setTimeout(() => {
         button.textContent = LABEL;
-        button.title = TITLE;
+        button.title = T().copyEnTitle;
         button.classList.remove('ptb-ok', 'ptb-error');
       }, FLASH_MS)
     );
@@ -128,13 +146,13 @@
     const result = await requestEnglishText(itemId);
 
     if (!result.ok) {
-      button.title = result.error;
+      button.title = errorText(result);
       flash(button, '!', 'error');
     } else if (await copyText(result.text)) {
-      button.title = TITLE;
+      button.title = T().copyEnTitle;
       flash(button, '✓', 'ok');
     } else {
-      button.title = '클립보드에 쓰지 못했습니다. 페이지를 클릭한 뒤 다시 눌러주세요.';
+      button.title = T().copyEnClipboard;
       flash(button, '!', 'error');
     }
 
@@ -153,7 +171,7 @@
     button.type = 'button';
     button.className = BTN_CLASS;
     button.textContent = LABEL;
-    button.title = TITLE;
+    button.title = T().copyEnTitle;
     button.addEventListener('click', handleClick);
     // 거래소는 줄에서 mousedown도 따로 듣는다. 클릭만 막아서는 새어 나간다.
     button.addEventListener('mousedown', (e) => e.stopPropagation());

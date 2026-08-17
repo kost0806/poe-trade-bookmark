@@ -134,6 +134,64 @@ function splitAlternatives(pattern) {
  *   { type: 'start' } / { type: 'end' } ^ $
  */
 
+/*
+ * 오류 문구는 패널에 그대로 뜨므로 화면 언어를 따라간다. 문구만 언어별로 두고,
+ * 무엇이 오류인지 가리는 규칙은 하나뿐이다. `lang.js`의 setLang이 여기를 맞춘다.
+ */
+const REGEX_MESSAGES = {
+  ko: {
+    anchorQuantifier: '앵커(^, $)에는 수량자를 붙일 수 없습니다',
+    doubleQuantifier: '수량자를 겹쳐 쓸 수 없습니다',
+    rangeBackwards: '수량자의 최대가 최소보다 작습니다',
+    noCloseParen: '닫는 괄호가 없습니다',
+    noOpenParen: '여는 괄호가 없습니다',
+    noOpenBracket: '여는 대괄호가 없습니다',
+    noCloseBracket: '닫는 대괄호가 없습니다',
+    lookbehind: '후방 탐색은 인게임 검색에서 쓸 수 없습니다',
+    unknownGroup: (kind) => `(?${kind} 꼴은 인게임 검색에서 쓸 수 없습니다`,
+    nothingToRepeat: '수량자 앞에 글자가 없습니다',
+    trailingBackslash: '역슬래시로 끝났습니다',
+    backreference: '역참조는 인게임 검색에서 쓸 수 없습니다',
+    wordBoundary: '\\b(단어 경계)는 인게임 검색에서 쓸 수 없습니다',
+    unknownEscape: (esc) => `\\${esc}는 모르는 이스케이프입니다`,
+    escapeInClass: (esc) => `클래스 안에는 \\${esc}를 넣을 수 없습니다`,
+    classRangeBackwards: '문자 범위가 거꾸로입니다',
+    tooComplex: '패턴이 너무 큽니다 (수량자를 줄이세요)',
+  },
+  en: {
+    anchorQuantifier: 'anchors (^, $) cannot take a quantifier',
+    doubleQuantifier: 'quantifiers cannot be stacked',
+    rangeBackwards: 'the quantifier maximum is below its minimum',
+    noCloseParen: 'missing a closing parenthesis',
+    noOpenParen: 'missing an opening parenthesis',
+    noOpenBracket: 'missing an opening bracket',
+    noCloseBracket: 'missing a closing bracket',
+    lookbehind: 'lookbehind does not work in the in-game search',
+    unknownGroup: (kind) => `(?${kind} does not work in the in-game search`,
+    nothingToRepeat: 'nothing for the quantifier to repeat',
+    trailingBackslash: 'ends with a backslash',
+    backreference: 'backreferences do not work in the in-game search',
+    wordBoundary: '\\b (word boundary) does not work in the in-game search',
+    unknownEscape: (esc) => `\\${esc} is not an escape we know`,
+    escapeInClass: (esc) => `\\${esc} cannot go inside a character class`,
+    classRangeBackwards: 'the character range runs backwards',
+    tooComplex: 'the pattern is too large (use smaller quantifiers)',
+  },
+};
+
+let messageLang = 'ko';
+
+/** 화면 언어에 맞춘다. 모르는 값이면 한글로 둔다. */
+function setRegexLanguage(lang) {
+  messageLang = REGEX_MESSAGES[lang] ? lang : 'ko';
+}
+
+/** 문구 하나. 값이 드는 문구는 함수로 두었다. */
+function regexMessage(key, ...args) {
+  const message = REGEX_MESSAGES[messageLang][key] ?? REGEX_MESSAGES.ko[key];
+  return typeof message === 'function' ? message(...args) : message;
+}
+
 /**
  * 패턴을 해석하지 못했을 때. 어디서 왜 막혔는지 함께 알린다.
  *
@@ -234,11 +292,11 @@ function parsePattern(src) {
     // 앵커에 수량자를 붙이면 뜻이 없다. 실수일 가능성이 높으니 알려 준다.
     if (node.type === 'start' || node.type === 'end') {
       i = start;
-      fail('앵커(^, $)에는 수량자를 붙일 수 없습니다');
+      fail(regexMessage('anchorQuantifier'));
     }
     // 겹쳐 쓴 수량자('a**')는 게임에서도 오류다.
     if (!eof() && '?*+'.includes(peek())) {
-      fail('수량자를 겹쳐 쓸 수 없습니다');
+      fail(regexMessage('doubleQuantifier'));
     }
     return { type: 'repeat', node, min, max };
   }
@@ -268,7 +326,7 @@ function parsePattern(src) {
     i++; // '}'
     const min = Number(lo);
     const max = hi === String(Infinity) ? Infinity : Number(hi);
-    if (max < min) fail('수량자의 최대가 최소보다 작습니다');
+    if (max < min) fail(regexMessage('rangeBackwards'));
     return { min, max };
   }
 
@@ -289,32 +347,32 @@ function parsePattern(src) {
         if (kind === '=' || kind === '!') {
           i += 3;
           const inner = parseAlt();
-          if (eof() || peek() !== ')') fail('닫는 괄호가 없습니다');
+          if (eof() || peek() !== ')') fail(regexMessage('noCloseParen'));
           i++;
           return { type: 'look', negated: kind === '!', node: inner };
         }
         if (kind === '<') {
-          fail('후방 탐색은 인게임 검색에서 쓸 수 없습니다', 'unsupported');
+          fail(regexMessage('lookbehind'), 'unsupported');
         }
         // '(?:'는 묶기만 하고 매칭 결과를 바꾸지 않는다.
         if (kind === ':') {
           i += 3;
           const inner = parseAlt();
-          if (eof() || peek() !== ')') fail('닫는 괄호가 없습니다');
+          if (eof() || peek() !== ')') fail(regexMessage('noCloseParen'));
           i++;
           return inner;
         }
-        fail(`(?${kind ?? ''} 꼴은 인게임 검색에서 쓸 수 없습니다`, 'unsupported');
+        fail(regexMessage('unknownGroup', kind ?? ''), 'unsupported');
       }
       i++;
       const inner = parseAlt();
-      if (eof() || peek() !== ')') fail('닫는 괄호가 없습니다');
+      if (eof() || peek() !== ')') fail(regexMessage('noCloseParen'));
       i++;
       return inner;
     }
-    if (ch === ')') fail('여는 괄호가 없습니다');
+    if (ch === ')') fail(regexMessage('noOpenParen'));
     if (ch === '[') return parseClass();
-    if (ch === ']') fail('여는 대괄호가 없습니다');
+    if (ch === ']') fail(regexMessage('noOpenBracket'));
     if (ch === '.') {
       i++;
       return { type: 'any' };
@@ -328,11 +386,11 @@ function parsePattern(src) {
       return { type: 'end' };
     }
     if (ch === '*' || ch === '+' || ch === '?') {
-      fail('수량자 앞에 글자가 없습니다');
+      fail(regexMessage('nothingToRepeat'));
     }
     if (ch === '\\') {
       i++;
-      if (eof()) fail('역슬래시로 끝났습니다');
+      if (eof()) fail(regexMessage('trailingBackslash'));
       const esc = src[i];
 
       if (SHORTHAND[esc]) {
@@ -344,11 +402,11 @@ function parsePattern(src) {
        * 맞지만 실제로 통했다는 보고를 찾지 못했다. 조용히 다른 결과를 내느니
        * 막는다 — 지도 정규식에서 둘 다 쓸 일이 없다.
        */
-      if (/[0-9]/.test(esc)) fail('역참조는 인게임 검색에서 쓸 수 없습니다', 'unsupported');
+      if (/[0-9]/.test(esc)) fail(regexMessage('backreference'), 'unsupported');
       if (esc === 'b' || esc === 'B') {
-        fail('\\b(단어 경계)는 인게임 검색에서 쓸 수 없습니다', 'unsupported');
+        fail(regexMessage('wordBoundary'), 'unsupported');
       }
-      if (/[A-Za-z]/.test(esc)) fail(`\\${esc}는 모르는 이스케이프입니다`, 'unsupported');
+      if (/[A-Za-z]/.test(esc)) fail(regexMessage('unknownEscape', esc), 'unsupported');
       i++;
       return { type: 'char', ch: esc };
     }
@@ -370,12 +428,12 @@ function parsePattern(src) {
       first = false;
       let lo = src[i++];
       if (lo === '\\') {
-        if (eof()) fail('역슬래시로 끝났습니다');
+        if (eof()) fail(regexMessage('trailingBackslash'));
         // '[\d.]'처럼 클래스 안에 든 축약 클래스는 범위를 그대로 합친다.
         const shorthand = SHORTHAND[src[i]];
         if (shorthand) {
           if (shorthand.negated) {
-            fail(`클래스 안에는 \\${src[i]}를 넣을 수 없습니다`, 'unsupported');
+            fail(regexMessage('escapeInClass', src[i]), 'unsupported');
           }
           ranges.push(...shorthand.ranges);
           i++;
@@ -388,14 +446,14 @@ function parsePattern(src) {
         i++;
         hi = src[i++];
         if (hi === '\\') {
-          if (eof()) fail('역슬래시로 끝났습니다');
+          if (eof()) fail(regexMessage('trailingBackslash'));
           hi = src[i++];
         }
-        if (hi.codePointAt(0) < lo.codePointAt(0)) fail('문자 범위가 거꾸로입니다');
+        if (hi.codePointAt(0) < lo.codePointAt(0)) fail(regexMessage('classRangeBackwards'));
       }
       ranges.push([lo, hi]);
     }
-    if (eof()) fail('닫는 대괄호가 없습니다');
+    if (eof()) fail(regexMessage('noCloseBracket'));
     i++; // ']'
     if (!ranges.length) fail('문자 클래스가 비어 있습니다');
     return { type: 'class', negated, ranges };
@@ -403,7 +461,7 @@ function parsePattern(src) {
 
   const node = parseAlt();
   // parseSeq는 ')'에서 멈춘다. 여기까지 남아 있다면 짝이 없는 닫는 괄호다.
-  if (!eof()) fail('여는 괄호가 없습니다');
+  if (!eof()) fail(regexMessage('noOpenParen'));
   return node;
 }
 
@@ -459,7 +517,7 @@ function compileProgram(root) {
 
   const emit = (inst) => {
     if (prog.length >= MAX_PROGRAM) {
-      throw new PoeRegexError('패턴이 너무 큽니다 (수량자를 줄이세요)', 0);
+      throw new PoeRegexError(regexMessage('tooComplex'), 0);
     }
     prog.push(inst);
     return prog.length - 1;
@@ -787,5 +845,6 @@ if (typeof module !== 'undefined') {
     validateQuery,
     PoeRegexError,
     POE_QUERY_MAX,
+    setRegexLanguage,
   };
 }
