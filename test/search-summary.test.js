@@ -13,6 +13,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
+// 문구는 화면 언어를 따라간다(lang.js). 기본은 한글이다.
+Object.assign(globalThis, require('../lang.js'));
 Object.assign(globalThis, require('../search-summary.js'));
 const { formatSummary, summaryLines, hasSummary, SUMMARY_MAX_LINES } = globalThis;
 const { titleFromSummary, NAME_MAX } = require('../search-name.js');

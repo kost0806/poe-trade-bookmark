@@ -1,0 +1,925 @@
+{
+  "groups": [
+    {
+      "ko": "기타",
+      "en": "Misc"
+    },
+    {
+      "ko": "몬스터 강화",
+      "en": "Monster buffs"
+    },
+    {
+      "ko": "방어 약화",
+      "en": "Player debuffs"
+    },
+    {
+      "ko": "보스 강화",
+      "en": "Boss buffs"
+    },
+    {
+      "ko": "지역 구성",
+      "en": "Area composition"
+    },
+    {
+      "ko": "피해 반사",
+      "en": "Reflect"
+    },
+    {
+      "ko": "회복 방해",
+      "en": "Recovery denial"
+    }
+  ],
+  "mods": [
+    {
+      "ids": [
+        "implicit.stat_804187877"
+      ],
+      "group": "기타",
+      "affix": "MapCorruptionBossCorruption",
+      "affixKo": "MapCorruptionBossCorruption",
+      "text": "Unique Monsters drop Corrupted Items",
+      "textKo": "고유 몬스터가 타락한 아이템을 떨어뜨림",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_4103440490"
+      ],
+      "group": "기타",
+      "affix": "of Enfeeblement",
+      "affixKo": "- 쇠약",
+      "text": "Players are Cursed with Enfeeble",
+      "textKo": "플레이어가 쇠약화 저주에 걸림",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2326202293"
+      ],
+      "group": "기타",
+      "affix": "of Temporal Chains",
+      "affixKo": "- 시간의 사슬",
+      "text": "Players are Cursed with Temporal Chains",
+      "textKo": "플레이어가 시간의 사슬 저주에 걸림",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_558910024"
+      ],
+      "group": "기타",
+      "affix": "of Elemental Weakness",
+      "affixKo": "- 원소 약화",
+      "text": "Players are Cursed with Elemental Weakness",
+      "textKo": "플레이어가 원소 약화 저주에 걸림",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1366534040"
+      ],
+      "group": "기타",
+      "affix": "of Vulnerability",
+      "affixKo": "- 취약성",
+      "text": "Players are Cursed with Vulnerability",
+      "textKo": "플레이어가 취약성 저주에 걸림",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1217583941"
+      ],
+      "group": "기타",
+      "affix": "of Transience",
+      "affixKo": "- 덧없음",
+      "text": "Buffs on Players expire 70% faster",
+      "textKo": "플레이어에게 적용되는 버프가 70% 더 빠르게 만료됨",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_272758639",
+        "explicit.stat_3729221884"
+      ],
+      "group": "기타",
+      "affix": "of Rust",
+      "affixKo": "- 녹",
+      "text": "Players have 30% less Armour\nPlayers have 40% reduced Chance to Block",
+      "textKo": "플레이어의 방어도 30% 감폭\n플레이어의 막기 확률 40% 감소",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2312028586"
+      ],
+      "group": "기타",
+      "affix": "of Impotence",
+      "affixKo": "- 무기력",
+      "text": "Players have 25% less Area of Effect",
+      "textKo": "플레이어의 효과 범위 25% 감폭",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_816367946"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Conflagrating",
+      "affixKo": "불태우는",
+      "text": "All Monster Damage from Hits always Ignites",
+      "textKo": "모든 몬스터의 적중 피해가 항상 점화 유발",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1106651798",
+        "explicit.stat_798009319"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Unstoppable",
+      "affixKo": "폭주",
+      "text": "Monsters cannot be Taunted\nMonsters' Action Speed cannot be modified to below Base Value\nMonsters' Movement Speed cannot be modified to below Base Value",
+      "textKo": "몬스터 도발 면역\n몬스터의 동작 속도가 기본 수치 밑으로 내려가지 않음\n몬스터의 이동 속도가 기본 수치 밑으로 내려가지 않음",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1890519597"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Savage",
+      "affixKo": "야만적인",
+      "text": "(22—25)% increased Monster Damage",
+      "textKo": "몬스터 피해 (22—25)% 증가",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3448216135"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Freezing",
+      "affixKo": "동결의",
+      "text": "Monsters deal (90—110)% extra Physical Damage as Cold",
+      "textKo": "몬스터가 (90—110)%의 추가 물리 피해를 냉기 속성으로 가함",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3416853625"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Shocking",
+      "affixKo": "감전의",
+      "text": "Monsters deal (90—110)% extra Physical Damage as Lightning",
+      "textKo": "몬스터가 (90—110)%의 추가 물리 피해를 번개 속성으로 가함",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1497673356"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Burning",
+      "affixKo": "불타는",
+      "text": "Monsters deal (90—110)% extra Physical Damage as Fire",
+      "textKo": "몬스터가 (90—110)%의 추가 물리 피해를 화염 속성으로 가함",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_144665660"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Impervious",
+      "affixKo": "뚫리지 않는",
+      "text": "Monsters have a 50% chance to avoid Poison, Impale, and Bleeding",
+      "textKo": "몬스터가 50%의 확률로 중독, 꿰뚫기, 출혈 회피",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_322206271"
+      ],
+      "group": "몬스터 강화",
+      "affix": "of Insulation",
+      "affixKo": "- 절연",
+      "text": "Monsters have 70% chance to Avoid Elemental Ailments",
+      "textKo": "몬스터가 70%의 확률로 원소 상태 이상 긴급회피",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_4164174520"
+      ],
+      "group": "몬스터 강화",
+      "affix": "of Carnage",
+      "affixKo": "- 살육",
+      "text": "Monsters Maim on Hit with Attacks",
+      "textKo": "몬스터가 공격 명중 시 힘줄 절단 유발",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2553656203"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Empowered",
+      "affixKo": "강화된",
+      "text": "Monsters have a 20% chance to Ignite, Freeze and Shock on Hit",
+      "textKo": "몬스터가 명중 시 20%의 확률로 점화, 동결, 감전 유발",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1629869774"
+      ],
+      "group": "몬스터 강화",
+      "affix": "of Blinding",
+      "affixKo": "- 실명",
+      "text": "Monsters Blind on Hit",
+      "textKo": "몬스터가 명중 시 실명 유발",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1840747977",
+        "explicit.stat_3044826007"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Profane",
+      "affixKo": "모독적인",
+      "text": "Monsters gain (31—35)% of their Physical Damage as Extra Chaos Damage\nMonsters Inflict Withered for 2 seconds on Hit",
+      "textKo": "몬스터가 물리 피해의 (31—35)%를 추가 카오스 피해로 획득\n몬스터가 명중 시 2초 동안 위축 유발",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_4154059009"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Hexproof",
+      "affixKo": "사술 방지",
+      "text": "Monsters are Hexproof",
+      "textKo": "몬스터가 사술 방지 보유",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2887760183"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Buffered",
+      "affixKo": "강해진",
+      "text": "Monsters gain (40—49)% of Maximum Life as Extra Maximum Energy Shield",
+      "textKo": "몬스터가 최대 생명력의 (40—49)%를 추가 에너지 보호막 최대치로 획득",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_337935900"
+      ],
+      "group": "몬스터 강화",
+      "affix": "of Toughness",
+      "affixKo": "- 강인함",
+      "text": "Monsters take (36—40)% reduced Extra Damage from Critical Strikes",
+      "textKo": "몬스터가 치명타로 받는 추가 피해 (36—40)% 감소",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1309819744"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Splitting",
+      "affixKo": "분할의",
+      "text": "Monsters fire 2 additional Projectiles",
+      "textKo": "몬스터가 투사체 2개 추가 발사",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3350803563"
+      ],
+      "group": "몬스터 강화",
+      "affix": "of Venom",
+      "affixKo": "- 독액",
+      "text": "Monsters Poison on Hit",
+      "textKo": "몬스터의 공격 명중 시 중독",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1541224187"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Impaling",
+      "affixKo": "꿰뚫는",
+      "text": "Monsters' Attacks have 60% chance to Impale on Hit",
+      "textKo": "몬스터의 공격이 명중 시 60%의 확률로 꿰뚫음",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_839186746"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Armoured",
+      "affixKo": "장갑을 두른",
+      "text": "+40% Monster Physical Damage Reduction",
+      "textKo": "몬스터의 물리 피해 감소 +40%",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_95249895",
+        "explicit.stat_1041951480"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Unwavering",
+      "affixKo": "변함없는",
+      "text": "(25—30)% more Monster Life\nMonsters cannot be Stunned\n(40—49)% more Monster Life",
+      "textKo": "몬스터의 생명력 (25—30)% 증폭\n몬스터 기절 면역\n몬스터의 생명력 (40—49)% 증폭",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3183973644"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Chaining",
+      "affixKo": "연쇄의",
+      "text": "Monsters' skills Chain 2 additional times",
+      "textKo": "몬스터의 스킬 2회 추가 연쇄",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2306522833",
+        "explicit.stat_1913583994",
+        "explicit.stat_2488361432"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Fleet",
+      "affixKo": "쾌속의",
+      "text": "(25—30)% increased Monster Movement Speed\n(35—45)% increased Monster Attack Speed\n(35—45)% increased Monster Cast Speed",
+      "textKo": "몬스터의 이동 속도 (25—30)% 증가\n몬스터의 공격 속도 (35—45)% 증가\n몬스터의 시전 속도 (35—45)% 증가",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1588049749"
+      ],
+      "group": "몬스터 강화",
+      "affix": "of Miring",
+      "affixKo": "- 수렁",
+      "text": "Monsters have 50% increased Accuracy Rating\nPlayers have -20% to amount of Suppressed Spell Damage Prevented",
+      "textKo": "몬스터의 정확도 50% 증가\n플레이어가 방지하는 억제된 주문 피해 -20%",
+      "verified": false
+    },
+    {
+      "ids": [
+        "explicit.stat_962720646"
+      ],
+      "group": "몬스터 강화",
+      "affix": "of Impedance",
+      "affixKo": "- 저해",
+      "text": "Monsters Hinder on Hit with Spells",
+      "textKo": "몬스터의 주문 명중 시 이동 방해 유발",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2138205941"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Oppressive",
+      "affixKo": "억제하는",
+      "text": "Monsters have +60% chance to Suppress Spell Damage",
+      "textKo": "몬스터의 주문 피해 억제 확률 +60%",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2753083623",
+        "explicit.stat_57326096"
+      ],
+      "group": "몬스터 강화",
+      "affix": "of Deadliness",
+      "affixKo": "- 치명성",
+      "text": "Monsters have (360—400)% increased Critical Strike Chance\n+(41—45)% to Monster Critical Strike Multiplier",
+      "textKo": "몬스터의 치명타 확률 (360—400)% 증가\n몬스터의 치명타 피해 배율 +(41—45)%",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_365540634",
+        "explicit.stat_1054098949"
+      ],
+      "group": "몬스터 강화",
+      "affix": "Resistant",
+      "affixKo": "저항하는",
+      "text": "+25% Monster Chaos Resistance\n+40% Monster Elemental Resistances",
+      "textKo": "몬스터의 카오스 저항 +25%\n몬스터의 원소 저항 +40%",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1708461270"
+      ],
+      "group": "몬스터 강화",
+      "affix": "of Giants",
+      "affixKo": "- 거인",
+      "text": "Monsters have 100% increased Area of Effect",
+      "textKo": "몬스터의 효과 범위 100% 증가",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3796523155"
+      ],
+      "group": "방어 약화",
+      "affix": "Hexwarded",
+      "affixKo": "사술 수호의",
+      "text": "60% less effect of Curses on Monsters",
+      "textKo": "몬스터에게 걸리는 저주 효과 60% 감폭",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1026390635"
+      ],
+      "group": "방어 약화",
+      "affix": "of Balance",
+      "affixKo": "- 균형",
+      "text": "Players cannot inflict Exposure",
+      "textKo": "플레이어가 노출 유발 불가",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2450628570"
+      ],
+      "group": "방어 약화",
+      "affix": "of Doubt",
+      "affixKo": "- 의심",
+      "text": "Players have 60% reduced effect of Non-Curse Auras from Skills",
+      "textKo": "플레이어가 비-저주 오라 스킬로 받는 효과 60% 감소",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3376488707"
+      ],
+      "group": "방어 약화",
+      "affix": "of Exposure",
+      "affixKo": "- 노출",
+      "text": "Players have (-12—-9)% to all maximum Resistances",
+      "textKo": "플레이어의 모든 저항 최대치 (-12—-9)%",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3667574329"
+      ],
+      "group": "방어 약화",
+      "affix": "of Imprecision",
+      "affixKo": "- 비정밀함",
+      "text": "Players have 25% less Accuracy Rating",
+      "textKo": "플레이어의 정확도 25% 감폭",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2588474575"
+      ],
+      "group": "보스 강화",
+      "affix": "Enthralled",
+      "affixKo": "예속된",
+      "text": "Unique Bosses are Possessed",
+      "textKo": "고유 보스가 사로잡힘",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_124877078",
+        "explicit.stat_2109106920"
+      ],
+      "group": "보스 강화",
+      "affix": "Overlord's",
+      "affixKo": "대군주의",
+      "text": "Unique Boss deals 25% increased Damage\nUnique Boss has 30% increased Attack and Cast Speed",
+      "textKo": "고유 보스가 주는 피해 25% 증가\n고유 보스의 공격 및 시전 속도 30% 증가",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1959158336",
+        "explicit.stat_3040667106"
+      ],
+      "group": "보스 강화",
+      "affix": "Titan's",
+      "affixKo": "거신의",
+      "text": "Unique Boss has 35% increased Life\nUnique Boss has 70% increased Area of Effect",
+      "textKo": "고유 보스의 생명력 35% 증가\n고유 보스의 효과 범위 70% 증가",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_799271621"
+      ],
+      "group": "보스 강화",
+      "affix": "Twinned",
+      "affixKo": "이중",
+      "text": "Area contains two Unique Bosses",
+      "textKo": "지역에 고유 보스 2마리 등장",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1821565133"
+      ],
+      "group": "지역 구성",
+      "affix": "of Bloodlines",
+      "affixKo": "- 혈맹",
+      "text": "(20—30)% increased Magic Monsters",
+      "textKo": "마법 몬스터 (20—30)% 증가",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3246076198"
+      ],
+      "group": "지역 구성",
+      "affix": "of Lightning",
+      "affixKo": "- 번개",
+      "text": "Area has patches of Shocked Ground which increase Damage taken by 50%",
+      "textKo": "지역에 50%만큼 피해가 증가한 감전 지대 존재",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1000591322"
+      ],
+      "group": "지역 구성",
+      "affix": "Ceremonial",
+      "affixKo": "의식의",
+      "text": "Area contains many Totems",
+      "textKo": "지역에 다수의 토템 존재",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_4198346809"
+      ],
+      "group": "지역 구성",
+      "affix": "Feral",
+      "affixKo": "야생의",
+      "text": "Area is inhabited by Animals",
+      "textKo": "지역에 동물 서식",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3561450806"
+      ],
+      "group": "지역 구성",
+      "affix": "Multifarious",
+      "affixKo": "다양한",
+      "text": "Area has increased monster variety",
+      "textKo": "지역에 등장하는 몬스터 종류 증가",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3134632618"
+      ],
+      "group": "지역 구성",
+      "affix": "Lunar",
+      "affixKo": "달의",
+      "text": "Area is inhabited by Lunaris fanatics",
+      "textKo": "지역에 루나리스 광신도 거주",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_25085466"
+      ],
+      "group": "지역 구성",
+      "affix": "Slithering",
+      "affixKo": "기어가는",
+      "text": "Area is inhabited by Sea Witches and their Spawn",
+      "textKo": "지역에 바다 마녀 및 유충 서식",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2609768284",
+        "explicit.stat_728267040"
+      ],
+      "group": "지역 구성",
+      "affix": "Subterranean",
+      "affixKo": "지하의",
+      "text": "Area is inhabited by the Vaal\nFound Items have 10% chance to drop Corrupted in Area",
+      "textKo": "지역에 바알 서식\n지역에서 발견하는 아이템이 10% 확률로 타락",
+      "verified": false
+    },
+    {
+      "ids": [
+        "implicit.stat_1612402470"
+      ],
+      "group": "지역 구성",
+      "affix": "MapCorruptionVaalVessel",
+      "affixKo": "MapCorruptionVaalVessel",
+      "text": "Area contains 1 additional guarded Exquisite Vaal Vessels",
+      "textKo": "지역에 방어되는 정교한 바알 그릇 1개 추가 등장",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2457517302"
+      ],
+      "group": "지역 구성",
+      "affix": "Solar",
+      "affixKo": "태양의",
+      "text": "Area is inhabited by Solaris fanatics",
+      "textKo": "지역에 솔라리스 광신도 거주",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1948962470"
+      ],
+      "group": "지역 구성",
+      "affix": "of Consecration",
+      "affixKo": "- 신성화",
+      "text": "Area has patches of Consecrated Ground",
+      "textKo": "지역에 신성화 지대 존재",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3916182167"
+      ],
+      "group": "지역 구성",
+      "affix": "Demonic",
+      "affixKo": "악마의",
+      "text": "Area is inhabited by Demons",
+      "textKo": "지역에 악마 서식",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_808491979"
+      ],
+      "group": "지역 구성",
+      "affix": "Undead",
+      "affixKo": "언데드",
+      "text": "Area is inhabited by Undead",
+      "textKo": "지역에 언데드 서식",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_349586058"
+      ],
+      "group": "지역 구성",
+      "affix": "of Ice",
+      "affixKo": "- 얼음",
+      "text": "Area has patches of Chilled Ground",
+      "textKo": "지역에 얼음 지대 존재",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1813544255"
+      ],
+      "group": "지역 구성",
+      "affix": "Capricious",
+      "affixKo": "변덕스러운",
+      "text": "Area is inhabited by Goatmen",
+      "textKo": "지역에 염소인간 서식",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_133340941"
+      ],
+      "group": "지역 구성",
+      "affix": "of Flames",
+      "affixKo": "- 화염",
+      "text": "Area has patches of Burning Ground",
+      "textKo": "지역에 용암 지대 존재",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_645841425"
+      ],
+      "group": "지역 구성",
+      "affix": "Emanant",
+      "affixKo": "발산하는",
+      "text": "Area is inhabited by ranged monsters",
+      "textKo": "지역에 원거리형 몬스터 서식",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2651141461"
+      ],
+      "group": "지역 구성",
+      "affix": "Bipedal",
+      "affixKo": "이족보행의",
+      "text": "Area is inhabited by Humanoids",
+      "textKo": "지역에 인간형 적 서식",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_4252630904"
+      ],
+      "group": "지역 구성",
+      "affix": "Feasting",
+      "affixKo": "연회의",
+      "text": "Area is inhabited by Cultists of Kitava",
+      "textKo": "지역에 키타바 광신자 거주",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_45546355"
+      ],
+      "group": "지역 구성",
+      "affix": "Skeletal",
+      "affixKo": "해골의",
+      "text": "Area is inhabited by Skeletons",
+      "textKo": "지역에 해골 서식",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3516340048"
+      ],
+      "group": "지역 구성",
+      "affix": "Haunting",
+      "affixKo": "출몰하는",
+      "text": "Area is inhabited by Ghosts",
+      "textKo": "지역에 혼 서식",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3577222856"
+      ],
+      "group": "지역 구성",
+      "affix": "of Desecration",
+      "affixKo": "- 모독",
+      "text": "Area has patches of desecrated ground",
+      "textKo": "지역에 훼손된 지대 존재",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2961018200"
+      ],
+      "group": "지역 구성",
+      "affix": "Abhorrent",
+      "affixKo": "혐오스러운",
+      "text": "Area is inhabited by Abominations",
+      "textKo": "지역에 흉물 서식",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3126771445"
+      ],
+      "group": "지역 구성",
+      "affix": "Antagonist's",
+      "affixKo": "적대자의",
+      "text": "(20—30)% increased number of Rare Monsters",
+      "textKo": "희귀 몬스터 수 (20—30)% 증가",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3278889477"
+      ],
+      "group": "피해 반사",
+      "affix": "Punishing",
+      "affixKo": "응징하는",
+      "text": "Rare Monsters have Physical Thorns reflecting 800 Physical Damage",
+      "textKo": "희귀 몬스터가 물리 가시를 보유하고 800의 물리 피해 반사",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3938822425"
+      ],
+      "group": "피해 반사",
+      "affix": "Mirrored",
+      "affixKo": "반사된",
+      "text": "Rare Monsters have Elemental Thorns reflecting 1500 Elemental Damage",
+      "textKo": "희귀 몬스터가 원소 가시를 보유하고 1500의 원소 피해 반사",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1742567045"
+      ],
+      "group": "회복 방해",
+      "affix": "of Frenzy",
+      "affixKo": "- 격분",
+      "text": "Monsters gain a Frenzy Charge on Hit",
+      "textKo": "몬스터가 명중 시 격분 충전 획득",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_406353061"
+      ],
+      "group": "회복 방해",
+      "affix": "of Power",
+      "affixKo": "- 권능",
+      "text": "Monsters gain a Power Charge on Hit",
+      "textKo": "몬스터가 명중 시 권능 충전 획득",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_3222482040"
+      ],
+      "group": "회복 방해",
+      "affix": "of Enervation",
+      "affixKo": "- 피폐",
+      "text": "Monsters steal Power, Frenzy and Endurance charges on Hit",
+      "textKo": "몬스터가 명중 시 권능, 격분, 인내 충전 강탈",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_687813731"
+      ],
+      "group": "회복 방해",
+      "affix": "of Endurance",
+      "affixKo": "- 인내",
+      "text": "Monsters gain an Endurance Charge on Hit",
+      "textKo": "몬스터가 명중 시 인내 충전 획득",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1140978125"
+      ],
+      "group": "회복 방해",
+      "affix": "of Congealment",
+      "affixKo": "- 응고",
+      "text": "Monsters cannot be Leeched from",
+      "textKo": "몬스터는 흡수 대상이 되지 않음",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_1910157106"
+      ],
+      "group": "회복 방해",
+      "affix": "of Stasis",
+      "affixKo": "- 정체",
+      "text": "Players cannot Regenerate Life, Mana or Energy Shield",
+      "textKo": "플레이어가 생명력, 마나 또는 에너지 보호막 재생 불가",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_4181072906"
+      ],
+      "group": "회복 방해",
+      "affix": "of Smothering",
+      "affixKo": "- 질식",
+      "text": "Players have 60% less Recovery Rate of Life and Energy Shield",
+      "textKo": "플레이어의 생명력 및 에너지 보호막 회복 속도 60% 감폭",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_941368244"
+      ],
+      "group": "회복 방해",
+      "affix": "of Fatigue",
+      "affixKo": "- 피로",
+      "text": "Players have 40% less Cooldown Recovery Rate",
+      "textKo": "플레이어의 재사용 대기시간 회복 속도 40% 감폭",
+      "verified": true
+    },
+    {
+      "ids": [
+        "explicit.stat_2549889921"
+      ],
+      "group": "회복 방해",
+      "affix": "of Drought",
+      "affixKo": "- 가뭄",
+      "text": "Players gain 50% reduced Flask Charges",
+      "textKo": "플레이어의 플라스크 충전량 50% 감소",
+      "verified": true
+    }
+  ]
+}

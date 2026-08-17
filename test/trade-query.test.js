@@ -13,7 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 
 Object.assign(globalThis, require('../poe-regex.js'));
-const { MAP_MODS } = require('../map-mods.js');
+const { MAP_MODS_KO: MAP_MODS } = require('../map-mods.js');
 Object.assign(globalThis, { MAP_MODS });
 
 /*

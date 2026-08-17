@@ -93,11 +93,29 @@
   scrollbar-color: var(--border) transparent;
 }
 
+/* 제목 줄 — 이름과 언어 고르개를 한 줄에 둔다. */
+.head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
 .body h1 {
-  margin: 0 0 10px;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   font-size: 14px;
   letter-spacing: 0.02em;
   color: var(--accent);
+}
+
+/* 언어는 한 번 정하면 다시 건드릴 일이 드물어, 자리만 잡고 눈에 덜 띄게 둔다. */
+.lang {
+  flex: none;
+  padding: 2px 4px;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .card {

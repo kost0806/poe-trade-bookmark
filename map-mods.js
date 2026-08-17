@@ -1,5 +1,5 @@
 /**
- * T16(top tier) 지도 모드 목록 — 한글 전용.
+ * T16(top tier) 지도 모드 목록 — 한글 전용. 영문판은 `map-mods-en.js`.
  *
  * 생성 근거:
  *  - 모드 풀/한글 표기: https://poedb.tw/kr/Maps_top_tier
@@ -22,7 +22,7 @@
  * ids가 여러 개인 항목은 값만 다른 같은 계열(인게임 문구로는 구분 불가)이다.
  * 타락으로 붙는 모드는 explicit이 아니라 implicit이므로 id 앞자리를 주의한다.
  */
-const MAP_MODS = [
+const MAP_MODS_KO = [
   { ids: ["implicit.stat_804187877"], regex: "몬스터가.타", group: "기타", affix: "MapCorruptionBossCorruption", text: "고유 몬스터가 타락한 아이템을 떨어뜨림" },
   { ids: ["explicit.stat_4103440490"], regex: "쇠약화", group: "기타", affix: "- 쇠약", text: "플레이어가 쇠약화 저주에 걸림" },
   { ids: ["explicit.stat_2326202293"], regex: "시간의", group: "기타", affix: "- 시간의 사슬", text: "플레이어가 시간의 사슬 저주에 걸림" },
@@ -105,9 +105,9 @@ const MAP_MODS = [
   { ids: ["explicit.stat_2549889921"], regex: "충전량", group: "회복 방해", affix: "- 가뭄", rec: true, text: "플레이어의 플라스크 충전량 50% 감소" },
 ];
 
-const MOD_GROUPS = ["기타","몬스터 강화","방어 약화","보스 강화","지역 구성","피해 반사","회복 방해"];
+const MOD_GROUPS_KO = ["기타","몬스터 강화","방어 약화","보스 강화","지역 구성","피해 반사","회복 방해"];
 
 // 브라우저에서는 <script>로 로드되고, 테스트에서는 require로 쓴다.
 if (typeof module !== 'undefined') {
-  module.exports = { MAP_MODS, MOD_GROUPS };
+  module.exports = { MAP_MODS_KO, MOD_GROUPS_KO };
 }

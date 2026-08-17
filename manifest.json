@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "PoE Trade Bookmark",
-  "version": "0.6.0",
-  "description": "Path of Exile 1 거래소 검색 결과를 북마크로 저장하고, 아이템을 영문으로 복사합니다.",
+  "version": "0.7.0",
+  "description": "Path of Exile 1 거래소 검색 결과를 북마크로 저장하고, 아이템을 영문으로 복사합니다. (한국어/English)",
   "minimum_chrome_version": "102",
   "permissions": ["storage"],
   "background": {
@@ -31,6 +31,8 @@
         "search-name.js",
         "poe-regex.js",
         "map-mods.js",
+        "map-mods-en.js",
+        "lang.js",
         "presets.js",
         "trade-query.js",
         "panel.js",

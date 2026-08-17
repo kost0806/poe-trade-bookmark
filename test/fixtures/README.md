@@ -92,3 +92,18 @@ id를 잘못 적으면 거래소는 걸러 주지 않는데 인게임 필터만 
 
 원본은 `data/search-mods.json`입니다(추적하지 않음). 갱신은 거래소에서 다시 받아
 필요한 id만 다시 뽑으면 됩니다.
+
+## `en/`
+
+영문 맵모드 목록(`map-mods-en.js`)을 검사하는 데이터입니다 — 영문 모드
+풀(`map-mod-pool.json`), stat id 대조표(`trade-stats.json`), 지도 칸 아이템
+이름(`map-item-names.json`), 영문 지도 한 장의 전문(`map-item-lines.json`).
+`test/map-mods-en.test.js`가 읽습니다.
+
+`map-item-lines.json`만 성격이 다릅니다. 게임에서 직접 뜬 것이 아니라 공개된 이슈에
+붙어 있던 것을 옮겨 왔기 때문에, **키워드가 걸리면 안 되는 줄**의 모음으로만 씁니다.
+글자가 조금 달라도 키워드가 더 조심스러워질 뿐, 틀린 키워드를 통과시키지는 않습니다.
+
+한글 것과 달리 거래소 API에서 직접 받은 원본이 아니라 poedb·awakened-poe-trade·
+RePoE에서 모아 서로 대조한 것입니다. 어디까지 확인되었는지는 `data/en/README.md`에
+적어 두었습니다. `tools/build-en-data.js`가 만듭니다.

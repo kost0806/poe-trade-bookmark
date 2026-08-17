@@ -68,9 +68,10 @@ function parseTradeUrl(rawUrl) {
   };
 }
 
+/** 조건을 못 읽었을 때 쓰는 기본 이름. 갈래 이름은 화면 언어를 따라간다(lang.js). */
 function suggestTitle(parsed) {
   if (!parsed) return '';
-  const modeLabel = parsed.mode === 'exchange' ? '대량거래' : '검색';
+  const modeLabel = parsed.mode === 'exchange' ? T().modeExchange : T().modeSearch;
   return parsed.searchId
     ? `${parsed.league} ${modeLabel} ${parsed.searchId}`
     : `${parsed.league} ${modeLabel}`;
