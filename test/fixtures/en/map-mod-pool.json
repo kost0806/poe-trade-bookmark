@@ -1,0 +1,728 @@
+[
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Ceremonial",
+    "tags": [],
+    "text": "Area contains many Totems"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Antagonist's",
+    "tags": [],
+    "text": "(20—30)% increased number of Rare Monsters"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Bloodlines",
+    "tags": [],
+    "text": "(20—30)% increased Magic Monsters"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Skeletal",
+    "tags": [],
+    "text": "Area is inhabited by Skeletons"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Capricious",
+    "tags": [],
+    "text": "Area is inhabited by Goatmen"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Slithering",
+    "tags": [],
+    "text": "Area is inhabited by Sea Witches and their Spawn"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Undead",
+    "tags": [],
+    "text": "Area is inhabited by Undead"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Emanant",
+    "tags": [],
+    "text": "Area is inhabited by ranged monsters"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Feral",
+    "tags": [],
+    "text": "Area is inhabited by Animals"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Demonic",
+    "tags": [],
+    "text": "Area is inhabited by Demons"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Bipedal",
+    "tags": [],
+    "text": "Area is inhabited by Humanoids"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Solar",
+    "tags": [],
+    "text": "Area is inhabited by Solaris fanatics"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Lunar",
+    "tags": [],
+    "text": "Area is inhabited by Lunaris fanatics"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Haunting",
+    "tags": [],
+    "text": "Area is inhabited by Ghosts"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Feasting",
+    "tags": [],
+    "text": "Area is inhabited by Cultists of Kitava"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Multifarious",
+    "tags": [],
+    "text": "Area has increased monster variety"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Chaining",
+    "tags": [],
+    "text": "Monsters' skills Chain 2 additional times"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Hexproof",
+    "tags": [
+      "Caster",
+      "Curse"
+    ],
+    "text": "Monsters are Hexproof"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Venom",
+    "tags": [
+      "Chaos",
+      "Ailment"
+    ],
+    "text": "Monsters Poison on Hit"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Balance",
+    "tags": [
+      "Damage",
+      "Elemental"
+    ],
+    "text": "Players cannot inflict Exposure"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Twinned",
+    "tags": [],
+    "text": "Area contains two Unique Bosses"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Unwavering",
+    "tags": [
+      "Life"
+    ],
+    "text": "(25—30)% more Monster Life\nMonsters cannot be Stunned"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Splitting",
+    "tags": [],
+    "text": "Monsters fire 2 additional Projectiles"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Giants",
+    "tags": [],
+    "text": "Monsters have 100% increased Area of Effect"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Deadliness",
+    "tags": [
+      "Damage",
+      "Critical"
+    ],
+    "text": "Monsters have (360—400)% increased Critical Strike Chance\n+(41—45)% to Monster Critical Strike Multiplier"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Armoured",
+    "tags": [
+      "Physical"
+    ],
+    "text": "+40% Monster Physical Damage Reduction"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Fecund",
+    "tags": [
+      "Life"
+    ],
+    "text": "(40—49)% more Monster Life"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Savage",
+    "tags": [
+      "Damage"
+    ],
+    "text": "(22—25)% increased Monster Damage"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Burning",
+    "tags": [
+      "Damage",
+      "Physical",
+      "Elemental",
+      "Fire"
+    ],
+    "text": "Monsters deal (90—110)% extra Physical Damage as Fire"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Freezing",
+    "tags": [
+      "Damage",
+      "Physical",
+      "Elemental",
+      "Cold"
+    ],
+    "text": "Monsters deal (90—110)% extra Physical Damage as Cold"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Shocking",
+    "tags": [
+      "Damage",
+      "Physical",
+      "Elemental",
+      "Lightning"
+    ],
+    "text": "Monsters deal (90—110)% extra Physical Damage as Lightning"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Profane",
+    "tags": [
+      "Damage",
+      "Physical",
+      "Chaos"
+    ],
+    "text": "Monsters gain (31—35)% of their Physical Damage as Extra Chaos Damage\nMonsters Inflict Withered for 2 seconds on Hit"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Fleet",
+    "tags": [
+      "Attack",
+      "Caster",
+      "Speed"
+    ],
+    "text": "(25—30)% increased Monster Movement Speed\n(35—45)% increased Monster Attack Speed\n(35—45)% increased Monster Cast Speed"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Punishing",
+    "tags": [
+      "Damage",
+      "Physical"
+    ],
+    "text": "Rare Monsters have Physical Thorns reflecting 800 Physical Damage"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Mirrored",
+    "tags": [
+      "Damage",
+      "Elemental"
+    ],
+    "text": "Rare Monsters have Elemental Thorns reflecting 1500 Elemental Damage"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Smothering",
+    "tags": [
+      "Life",
+      "Defences",
+      "Energy Shield"
+    ],
+    "text": "Players have 60% less Recovery Rate of Life and Energy Shield"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Flames",
+    "tags": [
+      "Damage",
+      "Elemental",
+      "Fire"
+    ],
+    "text": "Area has patches of Burning Ground"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Ice",
+    "tags": [],
+    "text": "Area has patches of Chilled Ground"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Lightning",
+    "tags": [],
+    "text": "Area has patches of Shocked Ground which increase Damage taken by 50%"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Desecration",
+    "tags": [
+      "Damage",
+      "Chaos"
+    ],
+    "text": "Area has patches of desecrated ground"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Elemental Weakness",
+    "tags": [
+      "Caster",
+      "Curse"
+    ],
+    "text": "Players are Cursed with Elemental Weakness"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Vulnerability",
+    "tags": [
+      "Caster",
+      "Curse"
+    ],
+    "text": "Players are Cursed with Vulnerability"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Enfeeblement",
+    "tags": [
+      "Caster",
+      "Curse"
+    ],
+    "text": "Players are Cursed with Enfeeble"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Temporal Chains",
+    "tags": [
+      "Caster",
+      "Curse"
+    ],
+    "text": "Players are Cursed with Temporal Chains"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Stasis",
+    "tags": [
+      "Life",
+      "Mana",
+      "Defences",
+      "Energy Shield"
+    ],
+    "text": "Players cannot Regenerate Life, Mana or Energy Shield"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Exposure",
+    "tags": [
+      "Elemental",
+      "Resistance"
+    ],
+    "text": "Players have (-12—-9)% to all maximum Resistances"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Overlord's",
+    "tags": [
+      "Attack",
+      "Caster",
+      "Speed"
+    ],
+    "text": "Unique Boss deals 25% increased Damage\nUnique Boss has 30% increased Attack and Cast Speed"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Titan's",
+    "tags": [
+      "Life"
+    ],
+    "text": "Unique Boss has 35% increased Life\nUnique Boss has 70% increased Area of Effect"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Congealment",
+    "tags": [],
+    "text": "Monsters cannot be Leeched from"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Insulation",
+    "tags": [
+      "Elemental",
+      "Fire",
+      "Cold",
+      "Lightning",
+      "Ailment"
+    ],
+    "text": "Monsters have 70% chance to Avoid Elemental Ailments"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Toughness",
+    "tags": [
+      "Damage",
+      "Critical"
+    ],
+    "text": "Monsters take (36—40)% reduced Extra Damage from Critical Strikes"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Drought",
+    "tags": [],
+    "text": "Players gain 50% reduced Flask Charges"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Hexwarded",
+    "tags": [
+      "Caster",
+      "Curse"
+    ],
+    "text": "60% less effect of Curses on Monsters"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Empowered",
+    "tags": [
+      "Elemental",
+      "Fire",
+      "Cold",
+      "Lightning",
+      "Ailment"
+    ],
+    "text": "Monsters have a 20% chance to Ignite, Freeze and Shock on Hit"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Abhorrent",
+    "tags": [],
+    "text": "Area is inhabited by Abominations"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Unstoppable",
+    "tags": [
+      "Speed"
+    ],
+    "text": "Monsters cannot be Taunted\nMonsters' Action Speed cannot be modified to below Base ValueMonsters' Movement Speed cannot be modified to below Base Value"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Conflagrating",
+    "tags": [
+      "Elemental",
+      "Fire",
+      "Ailment"
+    ],
+    "text": "All Monster Damage from Hits always Ignites"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Resistant",
+    "tags": [
+      "Elemental",
+      "Chaos",
+      "Resistance"
+    ],
+    "text": "+25% Monster Chaos Resistance\n+40% Monster Elemental Resistances"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Impervious",
+    "tags": [
+      "Physical",
+      "Chaos",
+      "Attack",
+      "Ailment"
+    ],
+    "text": "Monsters have a 50% chance to avoid Poison, Impale, and Bleeding"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Rust",
+    "tags": [
+      "Defences",
+      "Armour"
+    ],
+    "text": "Players have 30% less Armour\nPlayers have 40% reduced Chance to Block"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Miring",
+    "tags": [
+      "Attack"
+    ],
+    "text": "Monsters have 50% increased Accuracy Rating\nPlayers have -20% to amount of Suppressed Spell Damage Prevented"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Impotence",
+    "tags": [],
+    "text": "Players have 25% less Area of Effect"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Frenzy",
+    "tags": [],
+    "text": "Monsters gain a Frenzy Charge on Hit"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Endurance",
+    "tags": [],
+    "text": "Monsters gain an Endurance Charge on Hit"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Power",
+    "tags": [],
+    "text": "Monsters gain a Power Charge on Hit"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Impaling",
+    "tags": [],
+    "text": "Monsters' Attacks have 60% chance to Impale on Hit"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Oppressive",
+    "tags": [],
+    "text": "Monsters have +60% chance to Suppress Spell Damage"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Buffered",
+    "tags": [],
+    "text": "Monsters gain (40—49)% of Maximum Life as Extra Maximum Energy Shield"
+  },
+  {
+    "source": "Base",
+    "affix": "prefix",
+    "name": "Enthralled",
+    "tags": [],
+    "text": "Unique Bosses are Possessed"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Blinding",
+    "tags": [],
+    "text": "Monsters Blind on Hit"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Carnage",
+    "tags": [],
+    "text": "Monsters Maim on Hit with Attacks"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Impedance",
+    "tags": [],
+    "text": "Monsters Hinder on Hit with Spells"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Enervation",
+    "tags": [],
+    "text": "Monsters steal Power, Frenzy and Endurance charges on Hit"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Consecration",
+    "tags": [],
+    "text": "Area has patches of Consecrated Ground"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Fatigue",
+    "tags": [],
+    "text": "Players have 40% less Cooldown Recovery Rate"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Transience",
+    "tags": [],
+    "text": "Buffs on Players expire 70% faster"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Doubt",
+    "tags": [],
+    "text": "Players have 60% reduced effect of Non-Curse Auras from Skills"
+  },
+  {
+    "source": "Base",
+    "affix": "suffix",
+    "name": "of Imprecision",
+    "tags": [],
+    "text": "Players have 25% less Accuracy Rating"
+  },
+  {
+    "source": "Corrupted",
+    "affix": "other",
+    "name": "",
+    "tags": [],
+    "text": "Contains a Vaal Side Area"
+  },
+  {
+    "source": "Corrupted",
+    "affix": "other",
+    "name": "",
+    "tags": [],
+    "text": "Area contains 1 additional guarded Exquisite Vaal Vessels"
+  },
+  {
+    "source": "Corrupted",
+    "affix": "other",
+    "name": "",
+    "tags": [],
+    "text": "Unique Monsters drop Corrupted Items"
+  },
+  {
+    "source": "Corrupted",
+    "affix": "other",
+    "name": "",
+    "tags": [],
+    "text": "Players' Vaal Skills do not apply Soul Gain Prevention"
+  },
+  {
+    "source": "Corrupted",
+    "affix": "other",
+    "name": "",
+    "tags": [],
+    "text": "Atlas Passives have (10—15)% increased Effect on Area"
+  },
+  {
+    "source": "Corrupted",
+    "affix": "other",
+    "name": "",
+    "tags": [],
+    "text": "Area has (1—5) additional random Scarab effects"
+  },
+  {
+    "source": "Corrupted",
+    "affix": "other",
+    "name": "",
+    "tags": [],
+    "text": "Area is affected by (5—15) additional random Unallocated Notable Atlas Passives"
+  },
+  {
+    "source": "Delve",
+    "affix": "prefix",
+    "name": "Subterranean",
+    "tags": [],
+    "text": "% increased Experience gain\nArea is inhabited by the Vaal\nFound Items have 10% chance to drop Corrupted in Area"
+  }
+]
