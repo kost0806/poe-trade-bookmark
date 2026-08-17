@@ -24,6 +24,8 @@ const MAP_MOD_POOL = require('./fixtures/map-mod-pool.json');
 const MAP_ITEM_NAMES = require('./fixtures/map-item-names.json');
 const REAL_MAPS = require('./fixtures/real-maps.json');
 const TRADE_STATS = require('./fixtures/trade-stats.json');
+// 필터 정의는 원본이 18KB로 작아서 대조표를 따로 뽑지 않고 그대로 읽는다.
+const TRADE_FILTERS = require('../data/search-filters.json');
 
 
 const {
@@ -35,6 +37,7 @@ const {
   AFFIX_COUNT_ID,
   INFLUENCE_IDS,
   REGEX_MAX,
+  RARITY_NON_UNIQUE,
 } = require('../trade-query.js');
 
 /** affix로 모드 하나를 집는다. */
@@ -387,4 +390,23 @@ test('검색 쿼리에 영향력 제외와 즉시 구입이 들어간다', () =>
   const notGroups = query.query.stats.filter((s) => s.type === 'not');
   assert.strictEqual(notGroups.length, 2, '영향력 제외 + 거를 모드');
   assert.ok(notGroups[0].filters.every((f) => f.id.startsWith('implicit.')));
+});
+
+test('검색 쿼리가 지도 분류와 비고유 희귀도로 좁힌다', () => {
+  // 8모드는 희귀 지도에만 붙는다. 희귀도를 비워 두면 고유 지도까지 결과에 섞인다.
+  const { filters } = buildSearchQuery({}).query.filters.type_filters;
+  assert.strictEqual(filters.category.option, 'map');
+  assert.strictEqual(filters.rarity.option, RARITY_NON_UNIQUE);
+
+  /*
+   * 옵션 id는 거래소가 준 필터 정의(data/search-filters.json)에 대고 확인한다.
+   * 스탯 id와 같은 이유다 — 틀린 id를 적으면 거래소가 조건을 조용히 무시한다.
+   */
+  const typeFilters = TRADE_FILTERS.result.find((g) => g.id === 'type_filters');
+  const options = typeFilters.filters.find((f) => f.id === 'rarity').option.options;
+  assert.strictEqual(options.find((o) => o.text === '모든 비고유')?.id, RARITY_NON_UNIQUE);
+  assert.ok(
+    typeFilters.filters.find((f) => f.id === 'category').option.options.some((o) => o.id === 'map'),
+    'map 분류가 있어야 한다'
+  );
 });

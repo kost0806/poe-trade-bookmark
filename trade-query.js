@@ -27,6 +27,15 @@ const INFLUENCE_IDS = [
   'implicit.stat_2696470877', // 태초자의 기억
 ];
 
+/*
+ * 아이템 희귀도 — 'nonunique'가 거래소의 '모든 비고유'다.
+ *
+ * 8모드 지도는 희귀 지도에만 나온다. 희귀도를 비워 두면 고유 지도까지 결과에 섞이는데,
+ * 고유 지도는 모드가 정해져 있어 8모드 검색에서는 살 일이 없다.
+ * (id는 /api/trade/data/filters의 type_filters > rarity에서 확인했다.)
+ */
+const RARITY_NON_UNIQUE = 'nonunique';
+
 // 거래 옵션 — 'securable'이 거래소의 '즉시 구입'이다.
 // 귓속말을 기다려야 하는 직접 거래 매물은 8모드 지도를 사는 데 방해만 된다.
 const STATUS_INSTANT_BUYOUT = 'securable';
@@ -58,7 +67,12 @@ function buildSearchQuery({
     query: {
       status: { option: status },
       filters: {
-        type_filters: { filters: { category: { option: 'map' } } },
+        type_filters: {
+          filters: {
+            category: { option: 'map' },
+            rarity: { option: RARITY_NON_UNIQUE },
+          },
+        },
         map_filters: { filters: { map_tier: { min: tier, max: tier } } },
       },
       stats,
@@ -164,6 +178,7 @@ if (typeof module !== 'undefined') {
     AFFIX_COUNT_ID,
     INFLUENCE_IDS,
     STATUS_INSTANT_BUYOUT,
+    RARITY_NON_UNIQUE,
     REGEX_MAX,
   };
 }

@@ -255,6 +255,16 @@ select {
   color: #fff;
 }
 
+/* 지울 프리셋을 고르지 않았을 때의 삭제 버튼. 눌리는 것처럼 보이지 않게 한다. */
+.mini:disabled,
+.mini:disabled:hover {
+  background: #241f1a;
+  color: var(--muted);
+  border-color: var(--border);
+  opacity: 0.5;
+  cursor: default;
+}
+
 #open-mods {
   width: 100%;
   margin-bottom: 8px;
@@ -323,6 +333,11 @@ select {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+/* display를 직접 준 요소는 hidden 속성에 지지 않는다. 이름 칸은 접혀 있어야 한다. */
+.modal-tools[hidden] {
+  display: none;
 }
 
 .modal-tools > input[type="text"] {

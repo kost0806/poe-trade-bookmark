@@ -14,6 +14,7 @@ const PENDING_KEY = 'pending';
 const PANEL_OPEN_KEY = 'panelOpen';
 const HISTORY_OPEN_KEY = 'historyOpen';
 const NAV_KEY = 'nav';
+const USER_PRESETS_KEY = 'userPresets';
 
 const HOST_ID = 'poe-trade-bookmark-root';
 
@@ -105,6 +106,15 @@ const PANEL_HTML = `
       <div class="modal-tools">
         <input id="mod-search" type="text" autocomplete="off" placeholder="모드 검색 — 문구, 접두어 이름, 정규식(예: 반사, 원소.가)" />
         <select id="preset" title="프리셋"></select>
+        <button type="button" id="preset-save" class="mini" title="지금 고른 모드를 프리셋으로 저장">저장…</button>
+        <button type="button" id="preset-delete" class="mini" title="고른 내 프리셋 지우기">삭제</button>
+      </div>
+
+      <!-- 이름 짓는 줄: 저장…을 눌렀을 때만 나온다 -->
+      <div class="modal-tools" id="preset-save-row" hidden>
+        <input id="preset-name" type="text" maxlength="40" autocomplete="off" placeholder="프리셋 이름 — 지금 고른 모드를 이 이름으로 저장합니다" />
+        <button type="button" id="preset-save-ok" class="mini">저장</button>
+        <button type="button" id="preset-save-cancel" class="mini">취소</button>
       </div>
 
       <!-- 붙여넣는 줄: 인게임 정규식으로 한 번에 선택 -->
@@ -688,6 +698,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
   if (changes[HISTORY_KEY]) renderHistory(changes[HISTORY_KEY].newValue ?? []);
 
+  // 다른 탭에서 저장하거나 지운 프리셋도 바로 목록에 반영한다.
+  if (changes[USER_PRESETS_KEY]) {
+    userPresets = changes[USER_PRESETS_KEY].newValue ?? [];
+    renderPresets();
+  }
+
   if (!changes[STORAGE_KEY]) return;
   const bookmarks = changes[STORAGE_KEY].newValue ?? [];
   renderList(bookmarks);
@@ -723,6 +739,10 @@ const runSearchBtn = $('run-search');
 const builderStatusEl = $('builder-status');
 const presetEl = $('preset');
 const presetDescEl = $('preset-desc');
+const presetSaveBtn = $('preset-save');
+const presetDeleteBtn = $('preset-delete');
+const presetSaveRow = $('preset-save-row');
+const presetNameEl = $('preset-name');
 const openModsBtn = $('open-mods');
 const modalEl = $('mod-modal');
 const modCountEl = $('mod-count');
@@ -969,6 +989,8 @@ function openMods() {
   modalEl.hidden = false;
   // 열 때는 늘 전체부터 — 지난번에 걸어 둔 '고른 것만'에 갇히지 않게 한다.
   setView(false);
+  // 지난번에 펴 둔 이름 칸이 남아 있지 않게 한다.
+  closePresetSave();
   // 바로 검색어를 칠 수 있게 한다. 찾던 말이 남아 있으면 통째로 잡아 준다.
   modSearchEl.focus();
   modSearchEl.select();
@@ -988,11 +1010,156 @@ viewSelectedBtn.addEventListener('click', () => setView(true));
 
 // Esc로 닫기. 이 키는 host에서 이미 거래소로 새지 않게 막아 두었다.
 root.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && !modalEl.hidden) closeMods();
+  if (event.key !== 'Escape' || modalEl.hidden) return;
+  // 이름 칸이 펴져 있으면 그것부터 접는다 — 이름을 짓다 말았다고 창까지 닫히면 곤란하다.
+  if (!presetSaveRow.hidden) closePresetSave();
+  else closeMods();
+});
+
+/* ---------------- 프리셋 ---------------- */
+
+/*
+ * 기본 프리셋은 presets.js에 박혀 있고, 여기서 만드는 것은 사용자가 지금 고른 모드를
+ * 그대로 담아 두는 '내 프리셋'이다. 담는 값이 기본 프리셋과 같은 keys 배열이라
+ * applyPreset은 어느 쪽인지 몰라도 된다.
+ */
+const USER_PRESET_PREFIX = 'user:';
+
+let userPresets = [];
+
+async function getUserPresets() {
+  const data = await chrome.storage.local.get(USER_PRESETS_KEY);
+  return Array.isArray(data[USER_PRESETS_KEY]) ? data[USER_PRESETS_KEY] : [];
+}
+
+async function setUserPresets(presets) {
+  await chrome.storage.local.set({ [USER_PRESETS_KEY]: presets });
+}
+
+const isUserPreset = (id) => typeof id === 'string' && id.startsWith(USER_PRESET_PREFIX);
+const userPresetDesc = (preset) =>
+  `내 프리셋 · ${preset.keys.length}개 · ${formatDate(preset.at)}`;
+
+/** 두 출처를 한 자리에서 찾는다. id가 겹치지 않으므로 어느 쪽인지 물을 필요가 없다. */
+function presetById(id) {
+  if (!id) return null;
+  if (!isUserPreset(id)) return PRESETS.find((p) => p.id === id) ?? null;
+
+  const found = userPresets.find((p) => p.id === id);
+  return found ? { ...found, desc: userPresetDesc(found) } : null;
+}
+
+/** 드롭다운을 다시 그린다. 고르고 있던 것이 아직 있으면 그대로 둔다. */
+function renderPresets() {
+  const keep = presetEl.value;
+  presetEl.textContent = '';
+  presetEl.append(new Option('프리셋…', ''));
+
+  const builtin = document.createElement('optgroup');
+  builtin.label = '기본';
+  for (const preset of PRESETS) builtin.append(new Option(preset.label, preset.id));
+  presetEl.append(builtin);
+
+  if (userPresets.length) {
+    const mine = document.createElement('optgroup');
+    mine.label = '내 프리셋';
+    for (const preset of userPresets) mine.append(new Option(preset.label, preset.id));
+    presetEl.append(mine);
+  }
+
+  // 지운 프리셋을 고른 채로 두지 않는다.
+  presetEl.value = presetById(keep) ? keep : '';
+  syncPresetButtons();
+}
+
+/** 삭제는 내 프리셋에만 쓴다 — 기본 프리셋은 지울 수 있는 것이 아니다. */
+function syncPresetButtons() {
+  presetDeleteBtn.disabled = !isUserPreset(presetEl.value);
+}
+
+function closePresetSave() {
+  presetSaveRow.hidden = true;
+  presetNameEl.value = '';
+}
+
+function openPresetSave() {
+  if (!selected.size) {
+    setBuilderStatus('고른 모드가 없습니다. 거를 모드를 먼저 고르세요.', 'error');
+    return;
+  }
+  // 내 프리셋을 고른 채라면 그 이름을 채워 둔다 — 같은 이름으로 저장하면 덮어쓴다.
+  const current = presetById(presetEl.value);
+  presetNameEl.value = isUserPreset(current?.id) ? current.label : '';
+  presetSaveRow.hidden = false;
+  presetNameEl.focus();
+  presetNameEl.select();
+}
+
+async function savePreset() {
+  const label = presetNameEl.value.trim();
+  if (!selected.size) {
+    setBuilderStatus('고른 모드가 없습니다. 거를 모드를 먼저 고르세요.', 'error');
+    return;
+  }
+  if (!label) {
+    setBuilderStatus('프리셋 이름을 적어 주세요.', 'error');
+    return;
+  }
+  if (PRESETS.some((p) => p.label === label)) {
+    setBuilderStatus(`'${label}'은(는) 기본 프리셋 이름입니다. 다른 이름을 쓰세요.`, 'error');
+    return;
+  }
+
+  // 같은 이름이면 새로 만들지 않고 덮어쓴다. 이름이 곧 그 프리셋이다.
+  const existing = userPresets.find((p) => p.label === label);
+  const record = {
+    id: existing?.id ?? `${USER_PRESET_PREFIX}${crypto.randomUUID()}`,
+    label,
+    keys: [...selected],
+    at: Date.now(),
+  };
+
+  userPresets = existing
+    ? userPresets.map((p) => (p.id === existing.id ? record : p))
+    : [...userPresets, record];
+  await setUserPresets(userPresets);
+
+  closePresetSave();
+  renderPresets();
+  presetEl.value = record.id;
+  syncPresetButtons();
+  presetDescEl.textContent = userPresetDesc(record);
+  setBuilderStatus(
+    `프리셋 '${label}'을(를) ${existing ? '덮어썼습니다' : '저장했습니다'} (${record.keys.length}개)`,
+    'ok'
+  );
+}
+
+async function deletePreset() {
+  const preset = presetById(presetEl.value);
+  if (!isUserPreset(preset?.id)) return;
+
+  userPresets = userPresets.filter((p) => p.id !== preset.id);
+  await setUserPresets(userPresets);
+
+  renderPresets();
+  presetEl.value = '';
+  presetDescEl.textContent = '';
+  syncPresetButtons();
+  // 목록에서만 지운다. 지금 고른 모드까지 풀어 버리면 되돌릴 방법이 없다.
+  setBuilderStatus(`프리셋 '${preset.label}'을(를) 지웠습니다. 고른 모드는 그대로입니다.`, 'ok');
+}
+
+presetSaveBtn.addEventListener('click', openPresetSave);
+presetDeleteBtn.addEventListener('click', deletePreset);
+$('preset-save-ok').addEventListener('click', savePreset);
+$('preset-save-cancel').addEventListener('click', closePresetSave);
+presetNameEl.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') savePreset();
 });
 
 function applyPreset(id) {
-  const preset = PRESETS.find((p) => p.id === id);
+  const preset = presetById(id);
   if (!preset) return;
 
   selected.clear();
@@ -1018,14 +1185,15 @@ function applyPreset(id) {
 
 presetEl.addEventListener('change', () => {
   applyPreset(presetEl.value);
-  const preset = PRESETS.find((p) => p.id === presetEl.value);
-  presetDescEl.textContent = preset?.desc ?? '';
+  presetDescEl.textContent = presetById(presetEl.value)?.desc ?? '';
+  syncPresetButtons();
 });
 
 $('preset-none').addEventListener('click', () => {
   selected.clear();
   presetEl.value = '';
   presetDescEl.textContent = '';
+  syncPresetButtons();
   renderMods();
   updateRegex();
   saveBuilderState();
@@ -1092,16 +1260,8 @@ async function initBuilder() {
   builderEl.hidden = !saved.open;
   builderArrow.textContent = saved.open ? '▼' : '▶';
 
-  const blank = document.createElement('option');
-  blank.value = '';
-  blank.textContent = '프리셋…';
-  presetEl.append(blank);
-  for (const p of PRESETS) {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = p.label;
-    presetEl.append(opt);
-  }
+  userPresets = await getUserPresets();
+  renderPresets();
 
   const leagues = await loadLeagues();
   leagueEl.textContent = '';

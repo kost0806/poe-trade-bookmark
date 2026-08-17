@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | `search-mods.json` | 검색 가능한 스탯 17,950개 (14개 분류) | `GET /api/trade/data/stats` |
 | `search-items.json` | 검색 가능한 아이템 6,002개 (22개 분류) | `GET /api/trade/data/items` |
+| `search-filters.json` | 검색 폼의 필터 정의 93개 (12개 묶음) | `GET /api/trade/data/filters` |
 
 한국 거래소(`poe.kakaogames.com`)에서 받은 한글판입니다. 언어가 다르면 문구가 전부
 달라지므로 섞어 쓰면 안 됩니다.
@@ -20,6 +21,10 @@
 
 `search-items.json`의 '지도' 분류는 지도 칸에 들어가는 아이템 이름을 알려 줍니다.
 키워드가 그 이름에 걸리면 그 아이템이 검색에서 사라집니다.
+
+`search-filters.json`은 검색 폼의 드롭다운 옵션 id를 알려 줍니다. `trade-query.js`가
+쓰는 `nonunique`(아이템 희귀도 '모든 비고유')가 여기 있는 id와 같은지 검사합니다. 이
+파일은 18KB로 작아서 대조표를 따로 뽑지 않고 테스트가 원본을 그대로 읽습니다.
 
 ## 갱신
 
