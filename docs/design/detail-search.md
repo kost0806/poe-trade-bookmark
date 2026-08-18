@@ -95,9 +95,7 @@ PoE2는 경로가 `/trade2/`라 `parts.indexOf('trade')`가 `-1`이 되어 자�
 2. **ranges** — `.filter` 중 `input.minmax.modified`를 가진 행만 담습니다(`search-summary.js:115`). 여기서도 `modified` 판정을 거래소에 맡기고, 역시 `STAT_PANE` 안쪽은 제외합니다.
 3. **statGroups** — `STAT_PANE` 안의 `.filter-group`마다 `.filter-group-body > .filter` 중 `.filter-title`이 있는 행만 모읍니다(`search-summary.js:123`). 제목 없는 행은 '+ 능력치 필터 추가' 자리이므로 이 조건 하나로 걸러집니다. 행이 하나도 없는 그룹은 통째로 버리고(`search-summary.js:126`), 그룹 제목은 헤더의 `.filter-group-header`에서 `rowTitle`로 읽습니다(`search-summary.js:127`).
 
-능력치 행은 **값이 없어도 남깁니다**. 일반 필터와 달리 능력치 행은 사용자가 직접 추가해야만 존재하므로, 존재 자체가 조건입니다(테스트가 이를 고정합니다 — §8).
-
-`hasSummary`(`search-summary.js:134`)는 넷 중 하나라도 비어 있지 않은지만 봅니다. 용도가 둘입니다 — 폼이 아직 안 채워졌는지 가리는 재시도 종료 조건(`panel.js:501`)과, 저장 레코드에 `summary` 키를 넣을지 말지의 판정(`panel.js:437`, `panel.js:649`, `panel.js:664`)입니다.
+능력치 행은 **값이 없어도 남깁니다** — 사용자가 직접 추가해야만 존재하므로 존재 자체가 조건이기 때문입니다(테스트가 이를 고정합니다 — §8). `hasSummary`(`search-summary.js:134`)는 넷 중 하나라도 비어 있지 않은지만 봅니다. 용도가 둘입니다 — 폼이 아직 안 채워졌는지 가리는 재시도 종료 조건(`panel.js:501`)과, 저장 레코드에 `summary` 키를 넣을지 말지의 판정(`panel.js:437`, `panel.js:649`, `panel.js:664`)입니다.
 
 ### 3.4 표기와 절단
 
@@ -164,9 +162,7 @@ PoE2는 경로가 `/trade2/`라 `parts.indexOf('trade')`가 `-1`이 되어 자�
 
 `watchSearch`(`panel.js:536`)는 0.5초마다 폼을 다시 읽어 이름이 달라졌으면 갱신합니다(`panel.js:690`). 이때 `filledName === null`이면 즉시 반환합니다(`panel.js:541`).
 
-이 한 줄이 구분하는 것은 **"거래소가 폼을 채우는 중"과 "검색이 바뀜"** 입니다. 둘 다 겉보기에는 '읽히는 이름이 달라졌다'로 나타나지만 뜻이 정반대입니다. 페이지 로드 직후 폼은 비어 있다가 채워지므로 `없음 → 있음` 전이가 반드시 한 번 일어나는데, 이것을 '검색 변경'으로 오인하면 사용자가 미리 적어 둔 이름을 지워 버립니다. 첫 판독은 `fillFromSearchPane`이 네 가지 보호 조건을 걸고 처리하고(§5.2), `watchSearch`는 **한 번이라도 채워진 뒤의 `있음 → 다른 있음` 전이만** 담당합니다. 이 분업 덕분에 `watchSearch`는 `nameTouched`를 무시하고 덮어쓸 수 있습니다(`panel.js:550`) — 그 시점의 변화는 확실히 검색 변경이기 때문입니다(FR-SUM-09의 단서 조항).
-
-같은 이유로 `watchSearch`는 읽어 낸 이름이 비었으면 아무것도 하지 않습니다(`panel.js:545`) — 검색 중 폼이 잠시 비는 순간에 이름을 날리지 않기 위해서입니다.
+이 한 줄이 구분하는 것은 **"거래소가 폼을 채우는 중"과 "검색이 바뀜"** 입니다. 둘 다 겉보기에는 '읽히는 이름이 달라졌다'로 나타나지만 뜻이 정반대입니다. 페이지 로드 직후 폼은 비어 있다가 채워지므로 `없음 → 있음` 전이가 반드시 한 번 일어나는데, 이것을 '검색 변경'으로 오인하면 사용자가 미리 적어 둔 이름을 지워 버립니다. 첫 판독은 `fillFromSearchPane`이 네 가지 보호 조건을 걸고 처리하고(§5.2), `watchSearch`는 **한 번이라도 채워진 뒤의 `있음 → 다른 있음` 전이만** 담당합니다. 이 분업 덕분에 `watchSearch`는 `nameTouched`를 무시하고 덮어쓸 수 있습니다(`panel.js:550`) — 그 시점의 변화는 확실히 검색 변경이기 때문입니다(FR-SUM-09의 단서 조항). 같은 이유로 `watchSearch`는 읽어 낸 이름이 비었으면 아무것도 하지 않습니다(`panel.js:545`) — 검색 중 폼이 잠시 비는 순간에 이름을 날리지 않기 위해서입니다.
 
 ### 5.4 두 개의 가드와 두 개의 감시 축
 
@@ -221,9 +217,9 @@ PoE2는 경로가 `/trade2/`라 `parts.indexOf('trade')`가 `-1`이 되어 자�
 
 `bookmark.regex`가 있을 때만 붙습니다(`panel.js:333`). 빌더로 만들지 않은 북마크에는 키 자체가 없으므로(§5.5의 옵셔널 전개) 판정이 `if` 한 줄로 끝납니다.
 
-- 툴팁에 `인게임 정규식 복사` + **정규식 전문**을 함께 넣습니다(`:338`). 인게임 한도가 250자라 툴팁 한 칸에 들어가고, 누르기 전에 무엇이 복사될지 확인할 수 있습니다.
-- 누르면 클립보드에 쓰고 라벨을 `복사됨`으로 바꿨다가 1200ms 뒤 되돌립니다(`:340`~`:342`). 되돌리기 타이머는 이 줄의 클로저에 갇힌 `setTimeout` 하나이고, 목록이 다시 그려지면 버튼 요소째 사라지므로 3편 §4.6이 EN 단추에 쓴 `WeakMap` 같은 관리가 필요 없습니다.
-- 클립보드 거절에 대한 대비는 없습니다. 3편 §4.5의 2단 폴백(`execCommand`)과 다른 선택이며, 사이드바는 사용자가 방금 누른 자리라 문서 포커스를 잃은 상태가 아니라는 전제에 기댑니다.
+툴팁에는 `인게임 정규식 복사`와 **정규식 전문**을 함께 넣습니다(`:338`). 인게임 한도가 250자라 툴팁 한 칸에 들어가고, 누르기 전에 무엇이 복사될지 확인할 수 있습니다. 누르면 클립보드에 쓰고 라벨을 `복사됨`으로 바꿨다가 1200ms 뒤 되돌립니다(`:340`~`:342`) — 되돌리기 타이머는 이 줄의 클로저에 갇힌 `setTimeout` 하나이고, 목록이 다시 그려지면 버튼 요소째 사라지므로 3편 §4.6이 EN 단추에 쓴 `WeakMap` 같은 관리가 필요 없습니다.
+
+클립보드 거절에 대한 대비는 없습니다. 3편 §4.5의 2단 폴백(`execCommand`)과 다른 선택이며, 사이드바는 사용자가 방금 누른 자리라 문서 포커스를 잃은 상태가 아니라는 전제에 기댑니다.
 
 ### 6.4 삭제와 기록 비우기
 
@@ -269,9 +265,7 @@ PoE2는 경로가 `/trade2/`라 `parts.indexOf('trade')`가 `-1`이 되어 자�
 | `.search-advanced-pane.brown`, `.filter-group` / `-body` / `-header` | `search-summary.js:24`, `:122`, `:123`, `:127` | 그룹 구조 소멸 → 제목이 빠져 **요약이 사실과 반대**가 될 수 있다 | `STAT_PANE`, statGroups 수집부 |
 | `.status-select`가 `.filter-select`가 **아님** | `search-summary.js:15` | 리그·상태가 조건으로 섞여 모든 이름 앞에 리그명이 붙음 | `PICKED_FILTER` |
 
-방어 설계로 확인된 것 — (1) 선택자가 `search-summary.js` 상단 4개 상수와 몇몇 함수 안에만 있어 수정 지점이 좁습니다, (2) 모든 판독이 옵셔널 체이닝과 `clean`을 통과해 예외 대신 빈 문자열이 됩니다(`search-summary.js:30`), (3) `readSummary`가 못 읽으면 조용히 `null`을 돌려주고 호출부가 주소 기반 이름으로 물러납니다(`panel.js:495`~`:504`).
-
-한편 주석과 코드가 어긋난 곳이 둘 있습니다. `search-summary.js:11` 주석은 선택자를 `input.form-control.minmax`라고 적지만 실제로는 `input.minmax`입니다(`search-summary.js:52`). `trade-url.js:14` 주석은 호스트 목록을 `manifest.json`의 `host_permissions`와 함께 유지하라고 하지만, 실제로 짝을 이뤄야 하는 것은 `content_scripts.matches`입니다 — `host_permissions`에는 `https://www.pathofexile.com/*` 하나뿐이고(`manifest.json:11`), 그것은 3편 §4.4의 영문 조회에 쓰이는 권한입니다.
+방어 설계로 확인된 것 — (1) 선택자가 `search-summary.js` 상단 4개 상수와 몇몇 함수 안에만 있어 수정 지점이 좁습니다, (2) 모든 판독이 옵셔널 체이닝과 `clean`을 통과해 예외 대신 빈 문자열이 됩니다(`search-summary.js:30`), (3) `readSummary`가 못 읽으면 조용히 `null`을 돌려주고 호출부가 주소 기반 이름으로 물러납니다(`panel.js:495`~`:504`). 주석과 코드가 어긋난 곳도 둘 있습니다. `search-summary.js:11` 주석은 선택자를 `input.form-control.minmax`라고 적지만 실제로는 `input.minmax`입니다(`search-summary.js:52`). `trade-url.js:14` 주석은 호스트 목록을 `manifest.json`의 `host_permissions`와 함께 유지하라고 하지만, 실제로 짝을 이뤄야 하는 것은 `content_scripts.matches`입니다 — `host_permissions`에는 `https://www.pathofexile.com/*` 하나뿐이고(`manifest.json:11`), 그것은 3편 §4.4의 영문 조회에 쓰이는 권한입니다.
 
 ---
 
