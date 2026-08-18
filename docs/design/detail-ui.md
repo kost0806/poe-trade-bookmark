@@ -63,7 +63,7 @@
 
 `applyStyles()`는 `chrome.runtime.getURL('panel.css')`를 `fetch`해 문자열로 읽고, `new CSSStyleSheet()` + `replaceSync()`로 만든 시트를 `root.adoptedStyleSheets`에 넣습니다(`panel.js:177`~`:180`).
 
-`<link>`나 `<style>`을 쓰지 않은 이유는 주석에 있습니다(`panel.js:171`~`:174`): 거래소의 CSP `style-src`가 그것들을 막을 수 있지만, 코드로 만든 시트는 **문서가 로드하는 리소스가 아니므로** CSP 판정 대상이 아닙니다. `fetch` 대상이 확장 리소스이므로 `manifest.json:43`의 `web_accessible_resources`에 `panel.css`가 등재되어 있어야 하고, 실제로 등재되어 있습니다.
+`<link>`나 `<style>`을 쓰지 않은 이유는 주석에 있습니다(`panel.js:171`~`:174`): 거래소의 CSP `style-src`가 그것들을 막을 수 있지만, 코드로 만든 시트는 **문서가 로드하는 리소스가 아니므로** CSP 판정 대상이 아닙니다. `fetch` 대상이 확장 리소스이므로 `manifest.json:43`의 `web_accessible_resources`에 `panel.css`가 등재되어 있어야 하고, 실제로 등재되어 있습니다(`manifest.json:45`).
 
 실패 시에는 `console.warn`만 남기고 계속 진행합니다(`panel.js:181`~`:184`). `catch` 뒤에서도 `host.style.display = ''`가 실행되므로(`panel.js:185`), **모양만 잃고 기능은 삽니다** — FR-PANEL-09의 "스타일을 못 읽어도 기능은 계속 동작한다"가 이 한 줄의 배치로 보장됩니다. `CSSStyleSheet` 생성자와 `adoptedStyleSheets` 배열 할당은 `manifest.json:6`의 `minimum_chrome_version: 102`가 덮습니다.
 
@@ -77,7 +77,7 @@
 
 ### 2.5 페이지를 밀어내는 방식
 
-`pushPage(open)`(`panel.js:219`)은 `document.documentElement.style`의 `margin-right`를 `important` 우선순위로 켜고, 닫을 때 `removeProperty`로 지웁니다(`panel.js:221`~`:222`). `!important`는 거래소가 `<html>`에 자체 margin을 줄 경우에도 이기기 위한 것입니다(`panel.js:216`의 주석).
+`pushPage(open)`(`panel.js:219`)은 `document.documentElement.style`의 `margin-right`를 `important` 우선순위로 켜고, 닫을 때 `removeProperty`로 지웁니다(`panel.js:221`~`:222`). `!important`는 거래소가 `<html>`에 자체 margin을 줄 경우에도 이기기 위한 것입니다(`panel.js:217`의 주석).
 
 **설계 약속**: 거래소 문서에 남기는 레이아웃 흔적은 이것 하나뿐입니다(FR-PANEL-03, NFR-ROB-05). 요소를 삽입하거나 클래스를 붙이지 않고, `<body>`는 건드리지 않습니다. 유일한 예외는 EN 단추 쪽의 `position: relative` 승격(§4.1)이며, 그 역시 배치를 바꾸지 않는 기준점 세우기입니다.
 
@@ -97,7 +97,7 @@
 
 **Esc의 2단 처리.** 리스너는 창이 닫혀 있으면 아무것도 하지 않고 빠집니다(`panel.js:1013`). 열려 있으면 프리셋 이름 입력 줄이 펴져 있는지를 먼저 봅니다 — 펴져 있으면 그것만 접고(`panel.js:1015`), 아니면 창을 닫습니다(`panel.js:1016`). 이름을 짓다 말았다고 창까지 닫히면 골라 둔 맥락을 잃기 때문입니다.
 
-**열 때의 초기화**(`openMods`, `panel.js:988`): 보기 모드를 늘 '전체'로 되돌리고(`setView(false)`, `panel.js:991`), 이름 입력 줄을 접고(`panel.js:993`), 검색 칸에 포커스를 준 뒤 기존 값을 통째로 선택합니다(`panel.js:995`~`:996`). 지난번 '고른 것만'에 갇히지 않게 하려는 것입니다. 같은 머리줄에 있는 '전체 해제'는 선택 집합을 건드리므로 2편 §5.7에서 다룹니다(FR-MODAL-06은 이 둘에 걸쳐 있습니다).
+**열 때의 초기화**(`openMods`, `panel.js:988`): 보기 모드를 늘 '전체'로 되돌리고(`setView(false)`, `panel.js:991`), 이름 입력 줄을 접고(`panel.js:993`), 검색 칸에 포커스를 준 뒤 기존 값을 통째로 선택합니다(`panel.js:995`~`:996`). 지난번 '고른 것만'에 갇히지 않게 하려는 것입니다. `setView`(`panel.js:976`)는 두 단추의 `on` 클래스와 `aria-pressed`를 **함께** 뒤집으므로(`panel.js:982`~`:983`), §2.6의 `renderPanel`이 손잡이에 하는 것과 마찬가지로 보기 상태가 보조기술에도 그대로 전달됩니다. 같은 머리줄에 있는 '전체 해제'는 선택 집합을 건드리므로 2편 §5.7에서 다룹니다(FR-MODAL-06은 이 둘에 걸쳐 있습니다).
 
 ### 2.8 렌더 방식
 
@@ -142,7 +142,7 @@
 
 ### 3.3 레이아웃 축
 
-- **사이드바 축**: `.wrap`이 `flex-direction: row`로 손잡이와 패널을 가로로 세웁니다(`panel.css:19`~`:21`). `.toggle`은 `flex: none`(`panel.css:39`)이라 패널이 접혀도 화면에 남습니다. 세로 방향은 `.panel` → `.body`(`overflow-y: auto`, `panel.css:90`) → `.card`들이고, 목록 카드만 `flex: 1`을 받습니다(`panel.css:118`). 그 안의 `.list`도 `flex:1; min-height:0; overflow-y:auto`(`panel.css:537`~`:540`)라 **목록 안에서만** 스크롤합니다. 기록 목록은 반대로 `flex: none; max-height: 168px`(`panel.css:586`~`:588`)로 제 높이만 씁니다 — 북마크가 주인공이고 기록은 곁가지라는 우선순위를 CSS가 그대로 표현합니다.
+- **사이드바 축**: `.wrap`이 `flex-direction: row`로 손잡이와 패널을 가로로 세웁니다(`panel.css:19`~`:21`). `.toggle`은 `flex: none`(`panel.css:39`)이라 패널이 접혀도 화면에 남습니다. 세로 방향은 `.panel` → `.body`(`overflow-y: auto`, `panel.css:90`) → `.card`들이고, 목록 카드만 `flex: 1`을 받습니다(`panel.css:118`). 그 안의 `.list`도 `flex:1; min-height:0; overflow-y:auto`(`panel.css:537`~`:540`)라 **목록 안에서만** 스크롤합니다. 기록 목록은 반대로 `flex: none; max-height: 168px`(`panel.css:587`~`:589`)로 제 높이만 씁니다 — 북마크가 주인공이고 기록은 곁가지라는 우선순위를 CSS가 그대로 표현합니다.
 - **모달 축**: `.modal`(fixed 덮개) → `.modal-back`(반투명 배경, `panel.css:299`) → `.modal-box`(`position: relative`로 배경 위, `panel.css:306`). 상자는 세로 flex이고 머리·도구줄·머리띠·발은 고정 높이, `.mod-grid`만 `flex: 1; min-height: 0`(`panel.css:400`)으로 남는 높이를 전부 가져갑니다.
 - **모드 그리드**: `repeat(auto-fill, minmax(300px, 1fr))`(`panel.css:404`)로 창 폭에 따라 칸 수가 자동으로 늘고 줄어듭니다(FR-MODAL-04). `align-content: start`(`panel.css:405`)는 항목이 적을 때 세로로 퍼지는 것을 막고, `gap: 1px 10px`은 세로 간격을 거의 붙여 한 화면에 더 담습니다.
 
@@ -275,7 +275,7 @@ EN 단추는 거래소 DOM 안(`.left` 자식)에 그대로 들어갑니다. 배
 | `/trade/` URL 모양 | `copy-en.js:36` → `trade-url.js:31` | 단추가 붙는 페이지가 어긋난다 | `trade-url.js:31`, `manifest.json:14` |
 | `<html>`에 margin을 얹을 수 있음 | `panel.js:221` | 패널이 거래소 화면을 덮는다 | `panel.js:219` |
 | 응답의 `result[0].item.extended.text` | `background.js:61`, `:67` | "찾지 못했습니다" / "영문 텍스트가 제공되지 않습니다" | `background.js:61`, `:67` |
-| 확장 리소스 접근(`panel.css`) | `panel.js:177` | 패널이 스타일 없이 뜬다(기능은 유지) | `manifest.json:43` |
+| 확장 리소스 접근(`panel.css`) | `panel.js:177` | 패널이 스타일 없이 뜬다(기능은 유지) | `manifest.json:45` |
 
 검색 폼 쪽 DOM 의존은 성격이 달라 1편 §7에 따로 모아 두었습니다.
 

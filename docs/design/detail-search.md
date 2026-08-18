@@ -33,7 +33,7 @@ flowchart LR
   FS --> IT
 ```
 
-핵심은 **요약 구조가 저장 형식이고, 문구는 그릴 때 만든다**는 점입니다(FR-SUM-10). 저장된 것은 `formatSummary`의 결과가 아니라 `summarizeSearchPane`의 반환 구조이고(`panel.js:437`, `panel.js:664`), 툴팁 문구는 목록을 그릴 때마다 새로 만듭니다(`panel.js:300`). 표기 규칙을 바꾸면 예전 항목에도 그대로 적용됩니다.
+핵심은 **요약 구조가 저장 형식이고, 문구는 그릴 때 만든다**는 점입니다(FR-SUM-10). 저장된 것은 `formatSummary`의 결과가 아니라 `summarizeSearchPane`의 반환 구조이고(`panel.js:437`, `panel.js:664`), 툴팁 문구는 목록을 그릴 때마다 새로 만듭니다(`panel.js:303`). 표기 규칙을 바꾸면 예전 항목에도 그대로 적용됩니다.
 
 ---
 
@@ -41,7 +41,7 @@ flowchart LR
 
 ### 2.1 지원 형태와 세그먼트 해석
 
-`parseTradeUrl`(`trade-url.js:31`)은 문자열을 `new URL`로 파싱하고 실패하면 `null`을 돌려줍니다(`trade-url.js:34`). 경로는 빈 조각을 걸러 배열로 만든 뒤 `trade` 세그먼트를 기준점으로 삼습니다(`trade-url.js:41`). 즉 **경로 앞에 무엇이 붙든 상관하지 않습니다** — 로케일 세그먼트(`/kr/trade/...`)는 `trade`보다 앞에 있으므로 자연히 무시됩니다.
+`parseTradeUrl`(`trade-url.js:31`)은 문자열을 `new URL`로 파싱하고 실패하면 `null`을 돌려줍니다(`trade-url.js:36`). 경로는 빈 조각을 걸러 배열로 만든 뒤 `trade` 세그먼트를 기준점으로 삼습니다(`trade-url.js:41`). 즉 **경로 앞에 무엇이 붙든 상관하지 않습니다** — 로케일 세그먼트(`/kr/trade/...`)는 `trade`보다 앞에 있으므로 자연히 무시됩니다.
 
 `trade` 다음 한 칸은 모드이며 `search`와 `exchange`만 통과합니다(`trade-url.js:46`). 남은 조각은 길이로 갈라 읽습니다 — 0개면 거래소 첫 화면이라 `null`(`trade-url.js:50`), 1개면 `league`만 두고 `searchId`는 `null`(`trade-url.js:55`), 2개 이상이면 뒤에서 두 번째가 `league`, 마지막이 `searchId`입니다(`trade-url.js:57`).
 
@@ -57,7 +57,7 @@ flowchart LR
 
 PoE2는 경로가 `/trade2/`라 `parts.indexOf('trade')`가 `-1`이 되어 자동으로 걸러집니다(`trade-url.js:43`). 별도 부정 조건이 없다는 점이 중요합니다 — 배제가 **판정 기준의 부산물**이라 규칙이 하나뿐입니다.
 
-`TRADE_HOSTS`(`trade-url.js:16`)는 공식 도메인 2종, 한국 서버 2종, 로케일 서브도메인 8종을 열거합니다. 이 목록은 `manifest.json`의 `content_scripts.matches`(`manifest.json:14`)와 짝을 이뤄야 합니다. matches는 와일드카드(`https://*.pathofexile.com/trade/*`)라 넓고 `TRADE_HOSTS`는 열거라 좁으므로 **실질 상한은 항상 `TRADE_HOSTS`**입니다. 새 로케일 서브도메인이 생기면 스크립트는 주입되지만 `parseTradeUrl`이 `null`을 돌려주어 "거래소 검색 페이지에서 저장할 수 있습니다"만 보이게 됩니다 — 조용한 오작동이 아니라 눈에 보이는 실패라 추적이 쉽습니다.
+`TRADE_HOSTS`(`trade-url.js:16`)는 공식 도메인 2종, 한국 서버 2종, 로케일 서브도메인 8종을 열거합니다. 이 목록은 `manifest.json`의 `content_scripts.matches`(`manifest.json:14`)와 짝을 이뤄야 하고, 둘이 함께 **대상 사이트의 `/trade/` 경로에서만 실행된다**는 요구를 지킵니다(FR-PANEL-06). matches는 와일드카드(`https://*.pathofexile.com/trade/*`)라 넓고 `TRADE_HOSTS`는 열거라 좁으므로 **실질 상한은 항상 `TRADE_HOSTS`**입니다. 새 로케일 서브도메인이 생기면 스크립트는 주입되지만 `parseTradeUrl`이 `null`을 돌려주어 "거래소 검색 페이지에서 저장할 수 있습니다"만 보이게 됩니다 — 조용한 오작동이 아니라 눈에 보이는 실패라 추적이 쉽습니다.
 
 `suggestTitle`(`trade-url.js:71`)은 폼을 못 읽었을 때의 최후 이름이며, 모양은 `<리그> <검색|대량거래> <검색ID>`입니다. 모드 라벨은 `exchange`면 `대량거래`, 아니면 `검색`으로 갈리고(`trade-url.js:73`), 검색 ID가 없으면 `<리그> <검색|대량거래>`까지만 씁니다(`trade-url.js:76`). 이 함수를 쓰는 곳은 셋 — 폼 초기값(`panel.js:599`), 기록 제목의 폴백(`panel.js:431`), 저장 시 빈 이름 대체(`panel.js:635`)입니다. 같은 라벨 규칙이 목록 메타에도 필요해 `panel.js:286`에 `modeLabel`이 따로 있습니다(§6.2).
 
@@ -156,7 +156,7 @@ PoE2는 경로가 `/trade2/`라 `parts.indexOf('trade')`가 `-1`이 되어 자�
 | `!savedBookmark` | 이미 저장된 북마크의 이름을 추천 이름으로 되돌리는 것(그러면 '이름 변경' 버튼이 잠기지 않고 오조작을 부른다) |
 | `!(pending && pending.url === parsed.url)` | 8모드 빌더가 지어 준 `16T 8모드 (N개 거름)`을 폼에서 읽은 이름으로 덮는 것 |
 
-네 조건은 **각기 다른 출처의 이름을 지키는 것**이고, 우선순위는 `renderForm`이 이름칸을 채우는 순서(저장된 이름 → 빌더 이름 → `suggestTitle`, `panel.js:589`~`:600`)와 정확히 대응합니다(FR-SUM-09).
+네 조건은 **각기 다른 출처의 이름을 지키는 것**이고, 우선순위는 `renderForm`이 이름칸을 채우는 순서(저장된 이름 → 빌더 이름 → `suggestTitle`, `panel.js:589`~`:600`)와 정확히 대응합니다(FR-SUM-09). 이름칸 아래에는 저장 대상 주소가 정규화된 그대로 한 줄 찍히므로(`targetEl`, `panel.js:200`·`:586`, 스타일은 `panel.css:198`의 `.target`), 어떤 이름이 채워졌든 지금 저장하려는 검색이 무엇인지 눈으로 확인할 수 있습니다.
 
 ### 5.3 `filledName === null`이면 `watchSearch`가 물러나는 이유
 
@@ -172,7 +172,7 @@ PoE2는 경로가 `/trade2/`라 `parts.indexOf('trade')`가 `-1`이 되어 자�
 
 ### 5.5 레코드 조립 규칙
 
-**북마크 추가**(`panel.js:655`) — `id`는 새로 만들고, `title`/`url`/`league`/`mode`/`searchId`/`createdAt`은 항상 넣습니다. `summary`와 `regex`는 **옵셔널 전개**로 붙입니다(`panel.js:664`, `panel.js:666`). `...(조건 ? {키: 값} : {})` 형태라, 조건이 거짓이면 키 자체가 생기지 않습니다. `summary: null`을 넣는 것과 다릅니다 — 없는 것과 "읽어 봤는데 없더라"를 구분할 필요가 없고, 저장 용량과 툴팁 폴백(`panel.js:300`의 `||`)과 목록의 정규식 버튼 조건(`panel.js:333`)이 모두 단순해집니다.
+**북마크 추가**(`panel.js:655`) — `id`는 새로 만들고, `title`/`url`/`league`/`mode`/`searchId`/`createdAt`은 항상 넣습니다. `summary`와 `regex`는 **옵셔널 전개**로 붙입니다(`panel.js:664`, `panel.js:666`). `...(조건 ? {키: 값} : {})` 형태라, 조건이 거짓이면 키 자체가 생기지 않습니다. `summary: null`을 넣는 것과 다릅니다 — 없는 것과 "읽어 봤는데 없더라"를 구분할 필요가 없고, 저장 용량과 툴팁 폴백(`panel.js:303`의 `||`)과 목록의 정규식 버튼 조건(`panel.js:333`)이 모두 단순해집니다.
 
 **이름 변경**(`panel.js:644`) — 기존 레코드를 전개해 `id`와 `createdAt`을 유지하고 `title`/`updatedAt`만 바꿉니다. 같은 URL은 같은 북마크라는 규칙(FR-BM-03)이 여기서 지켜집니다. 이때 `currentSummary`가 있으면 함께 덮어써(`panel.js:649`) 요약이 붙기 전 저장한 북마크를 보강합니다(FR-BM-10).
 
@@ -202,7 +202,7 @@ PoE2는 경로가 `/trade2/`라 `parts.indexOf('trade')`가 `-1`이 되어 자�
 
 ### 6.2 항목 본체와 메타 표기
 
-두 목록은 줄의 본체를 `itemButton`(`panel.js:296`) 하나로 공유합니다. 이 함수가 툴팁(`formatSummary(record.summary) || record.url`, `:300`), 이름 `<span>`, 메타 `<span>`, 클릭 시 `openRecord`를 한 번에 붙이므로, 두 목록의 줄 모양·툴팁 규칙·이동 동작은 **저절로** 같아집니다(FR-BM-05·07, FR-HIST-01). 호출부가 정하는 것은 메타 문자열 하나뿐입니다.
+두 목록은 줄의 본체를 `itemButton`(`panel.js:299`) 하나로 공유합니다. 이 함수가 툴팁(`formatSummary(record.summary) || record.url`, `:303`), 이름 `<span>`, 메타 `<span>`, 클릭 시 `openRecord`를 한 번에 붙이므로, 두 목록의 줄 모양·툴팁 규칙·이동 동작은 **저절로** 같아집니다(FR-BM-05·07, FR-HIST-01). 호출부가 정하는 것은 메타 문자열 하나뿐입니다.
 
 | 목록 | 메타 | 읽는 필드 | 근거 |
 | --- | --- | --- | --- |
