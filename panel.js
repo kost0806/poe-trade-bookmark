@@ -160,7 +160,8 @@ const root = host.attachShadow({ mode: 'open' });
 
 const wrapEl = document.createElement('div');
 wrapEl.className = 'wrap';
-// 폭은 여기 한 곳에서만 정한다. .wrap의 all:initial에 지워지지 않도록 인라인으로 준다.
+// 폭은 여기 한 곳에서만 정한다. pushPage의 margin-right와 같은 값이어야 하므로
+// 출처를 PANEL_WIDTH 상수 하나로 묶는다.
 wrapEl.style.setProperty('--panel-width', PANEL_WIDTH);
 wrapEl.innerHTML = PANEL_HTML;
 
@@ -286,6 +287,36 @@ function formatTime(ts) {
 
 const modeLabel = (mode) => (mode === 'exchange' ? '대량거래' : '검색');
 
+/**
+ * 클립보드에 넣는다. 성공 여부를 돌려준다.
+ *
+ * 클립보드 API는 문서가 포커스를 잃었거나 권한이 막히면 거절한다. 그때는 예전
+ * 방식으로 한 번 더 해 본다 — 실패를 삼키면 복사한 줄 알고 붙여넣기만 하게 된다.
+ */
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    /* 아래 방식으로 다시 시도 */
+  }
+
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0;';
+  document.body.append(area);
+  area.select();
+
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    ok = false;
+  }
+  area.remove();
+  return ok;
+}
+
 /** 패널이 거래소 안에서만 살아 있으므로 항상 이 탭에서 그대로 이동한다. */
 async function openRecord(record) {
   // 패널에서 옮겨 간 검색은 기록에 남기지 않는다 — 기록은 거래소에서 직접 한 검색만이다.
@@ -338,8 +369,7 @@ function renderList(bookmarks) {
       copy.textContent = '정규식';
       copy.title = `인게임 정규식 복사\n${bookmark.regex}`;
       copy.addEventListener('click', async () => {
-        await navigator.clipboard.writeText(bookmark.regex);
-        copy.textContent = '복사됨';
+        copy.textContent = (await copyToClipboard(bookmark.regex)) ? '복사됨' : '복사 실패';
         setTimeout(() => (copy.textContent = '정규식'), 1200);
       });
       li.append(copy);
@@ -500,7 +530,9 @@ async function readSummary(parsed) {
 
     const summary = summarizeSearchPane(document);
     if (hasSummary(summary)) return summary;
-    await sleep(FILL_RETRY_MS);
+    // 마지막 시도 뒤에는 기다리지 않는다 — 폼을 끝내 못 읽는 페이지에서 그 0.25초가
+    // 검색 기록 적재를 그만큼 늦춘다.
+    if (i < FILL_TRIES - 1) await sleep(FILL_RETRY_MS);
   }
   return null;
 }
@@ -509,7 +541,7 @@ async function readSummary(parsed) {
  * 폼에서 읽은 조건으로 추천 이름을 채우고, 이 검색을 기록에 남긴다.
  * 끝까지 못 읽으면 검색 ID로 만든 이름이 그대로 남는다.
  */
-async function fillFromSearchPane(parsed) {
+async function fillFromSearchPane(parsed, { record = true } = {}) {
   const summary = await readSummary(parsed);
   if (current?.url !== parsed.url) return;
 
@@ -524,7 +556,8 @@ async function fillFromSearchPane(parsed) {
     syncButton();
   }
 
-  await recordHistory(parsed, summary);
+  // 다시 그리느라 부른 경우에는 기록에 남기지 않는다 — 검색을 새로 한 것이 아니다.
+  if (record) await recordHistory(parsed, summary);
 }
 
 /**
@@ -543,21 +576,39 @@ function watchSearch() {
 
   const summary = summarizeSearchPane(document);
   const name = titleFromSummary(summary);
-  if (!name || name === filledName) return;
+  if (!name) return;
 
+  // 이름이 같아도 조건은 달라졌을 수 있다(값만 고친 경우). 저장할 요약은 언제나
+  // 지금 폼을 따라가야 툴팁이 실제 검색과 어긋나지 않는다.
   currentSummary = summary;
+  if (name === filledName) return;
+
   filledName = name;
   titleEl.value = name;
   nameTouched = false;
   syncButton();
 }
 
+/**
+ * 저장해 둔 북마크에 지금 채워 넣을 수 있는 것. 요약은 붙이기 전에 저장한 북마크에,
+ * 정규식은 그 검색을 빌더로 다시 만들었을 때 생긴다.
+ */
+function fillsExisting(bookmark) {
+  const built = pending && pending.url === current?.url ? pending : null;
+  return {
+    summary: !hasSummary(bookmark.summary) && hasSummary(currentSummary),
+    regex: !bookmark.regex && Boolean(built?.regex),
+  };
+}
+
 /** 저장된 검색이면 '이름 변경', 아니면 '북마크 추가'. 바뀔 내용이 없으면 잠근다. */
 function syncButton() {
   const name = titleEl.value.trim();
   if (savedBookmark) {
-    addBtn.textContent = '이름 변경';
-    addBtn.disabled = name === '' || name === savedBookmark.title;
+    const fills = fillsExisting(savedBookmark);
+    const onlyFills = name === savedBookmark.title && (fills.summary || fills.regex);
+    addBtn.textContent = onlyFills ? '빠진 정보 채우기' : '이름 변경';
+    addBtn.disabled = name === '' || (name === savedBookmark.title && !onlyFills);
   } else {
     addBtn.textContent = '북마크 추가';
     addBtn.disabled = false;
@@ -635,24 +686,33 @@ formEl.addEventListener('submit', async (event) => {
   const existing = bookmarks.find((b) => b.url === current.url);
   const name = titleEl.value.trim() || suggestTitle(current);
 
+  // 빌더로 만든 검색이면 정규식을 함께 보관한다. 이미 저장해 둔 검색을 빌더로 다시
+  // 만들 수도 있으므로 두 분기 모두에서 본다.
+  const built = pending && pending.url === current.url ? pending : null;
+
   let updated;
   let record;
   let message;
 
   if (existing) {
-    if (name === existing.title) return;
-    // 같은 검색을 다시 저장하면 새로 추가하지 않고 이름만 바꾼다.
+    // 이름 말고도 채울 것이 있으면 저장할 값으로 친다 — 요약이 붙기 전에 저장한
+    // 북마크의 검색 조건, 빌더로 다시 만든 검색의 정규식.
+    const fills = fillsExisting(existing);
+    if (name === existing.title && !fills.summary && !fills.regex) return;
+
+    // 같은 검색을 다시 저장하면 새로 추가하지 않고 채울 것만 채운다.
     record = {
       ...existing,
       title: name,
       updatedAt: Date.now(),
-      // 요약을 붙이기 전에 저장한 북마크라면 이번에 함께 넣어 준다.
-      ...(hasSummary(currentSummary) ? { summary: currentSummary } : {}),
+      ...(fills.summary ? { summary: currentSummary } : {}),
+      ...(fills.regex ? { regex: built.regex } : {}),
     };
     updated = bookmarks.map((b) => (b.id === existing.id ? record : b));
-    message = `이름을 "${name}"(으)로 바꿨습니다.`;
+    message =
+      name === existing.title ? '저장해 둔 검색에 빠진 정보를 채웠습니다.' : `이름을 "${name}"(으)로 바꿨습니다.`;
+    if (fills.regex) await clearPending();
   } else {
-    const built = pending && pending.url === current.url ? pending : null;
     record = {
       id: crypto.randomUUID(),
       title: name,
@@ -713,7 +773,13 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const match = current ? bookmarks.find((b) => b.url === current.url) ?? null : null;
   const inSync =
     match?.id === savedBookmark?.id && match?.title === savedBookmark?.title;
-  if (!inSync) renderForm();
+  if (inSync) return;
+
+  // 다시 그리면 채워 둔 이름이 지워지고 filledName도 null로 돌아간다. 이어서 다시
+  // 채우지 않으면 주소가 바뀔 때까지 watchSearch가 물러나 추천이 멈춘다.
+  renderForm().then(() => {
+    if (current?.searchId) fillFromSearchPane(current, { record: false });
+  });
 });
 
 /* ---------------- 16T 8모드 검색 만들기 ---------------- */
@@ -778,7 +844,12 @@ function setBuilderStatus(message, kind) {
 
 async function loadPending() {
   const saved = (await chrome.storage.local.get(PENDING_KEY))[PENDING_KEY];
-  if (!saved || Date.now() - saved.at > PENDING_TTL_MS) return null;
+  if (!saved) return null;
+  // 만료된 값은 쓰지도 않고 남겨 둘 이유도 없다.
+  if (Date.now() - saved.at > PENDING_TTL_MS) {
+    await clearPending();
+    return null;
+  }
   return saved;
 }
 
@@ -1327,8 +1398,11 @@ regexInEl.addEventListener('keydown', (event) => {
 
 $('copy-regex').addEventListener('click', async () => {
   if (!regexOutEl.value) return;
-  await navigator.clipboard.writeText(regexOutEl.value);
-  setBuilderStatus('정규식을 복사했습니다.', 'ok');
+  if (await copyToClipboard(regexOutEl.value)) {
+    setBuilderStatus('정규식을 복사했습니다.', 'ok');
+  } else {
+    setBuilderStatus('클립보드에 쓰지 못했습니다. 사이드바를 한 번 클릭한 뒤 다시 눌러주세요.', 'error');
+  }
 });
 
 /**

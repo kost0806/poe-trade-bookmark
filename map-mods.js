@@ -16,8 +16,9 @@
  *
  * 유일성은 여기 적힌 text만 놓고 맞춰 보면 안 된다. 인게임 검색은 아이템 전문을
  * 훑기 때문에, 목록 밖의 모드나 이름·속성 줄에 걸려도 엉뚱한 지도가 사라진다.
- * test/trade-query.test.js가 다섯 방향으로 대조한다 — 목록끼리, T16 풀 전체,
- * 지도 이름, 고급 모드 설명 줄(접두어 이름·태그), 실제 지도 한 장의 전문.
+ * test/trade-query.test.js가 일곱 방향으로 대조한다 — 목록끼리, T16 풀 전체,
+ * 실제 지도, 고급 모드 설명 줄(접두어 이름·태그), 한 항목이 묶은 변종 전부,
+ * 거래소 stat id, 지도 칸 아이템 이름.
  *
  * ids가 여러 개인 항목은 값만 다른 같은 계열(인게임 문구로는 구분 불가)이다.
  * 타락으로 붙는 모드는 explicit이 아니라 implicit이므로 id 앞자리를 주의한다.
@@ -105,9 +106,7 @@ const MAP_MODS = [
   { ids: ["explicit.stat_2549889921"], regex: "충전량", group: "회복 방해", affix: "- 가뭄", rec: true, text: "플레이어의 플라스크 충전량 50% 감소" },
 ];
 
-const MOD_GROUPS = ["기타","몬스터 강화","방어 약화","보스 강화","지역 구성","피해 반사","회복 방해"];
-
 // 브라우저에서는 <script>로 로드되고, 테스트에서는 require로 쓴다.
 if (typeof module !== 'undefined') {
-  module.exports = { MAP_MODS, MOD_GROUPS };
+  module.exports = { MAP_MODS };
 }

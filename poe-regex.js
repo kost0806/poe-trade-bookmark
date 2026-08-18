@@ -132,6 +132,7 @@ function splitAlternatives(pattern) {
  *   { type: 'alt', options }          |
  *   { type: 'repeat', node, min, max } ? * + {n,m}
  *   { type: 'start' } / { type: 'end' } ^ $
+ *   { type: 'look', negate, node }    (?=) (?!)
  */
 
 /**
@@ -417,13 +418,15 @@ function parsePattern(src) {
  * 걸렸다. 검색칸에는 아무 정규식이나 붙여 넣을 수 있으니 그 한 줄에 사이드바가
  * 멈춰 버린다. 인게임 문법에는 역참조도 전방 탐색도 없어서 패턴이 언제나 정규
  * 언어다. 그래서 가능한 자리를 한꺼번에 굴릴 수 있고, 글자 수 × 명령 수에 비례하는
- * 시간에 끝난다. 폭발하는 패턴이 아예 없다.
+ * 시간에 끝난다. 폭발하는 패턴이 아예 없다. 전방 탐색은 받지만, 그 자리에서 속을
+ * 따로 돌려 보는 방식이라 언어가 넓어지지 않는다.
  *
  * 명령:
  *   { op: 'char' | 'any' | 'class' }  글자 하나를 먹는다
  *   { op: 'split', x, y }             두 갈래 (자리는 그대로)
  *   { op: 'jmp', x }                  건너뛴다
  *   { op: 'lineStart' | 'lineEnd' }   너비 없는 앵커
+ *   { op: 'look', negate, program }   전방 탐색 (자리는 그대로)
  *   { op: 'match' }                   여기 닿으면 성공
  */
 
@@ -432,25 +435,6 @@ const MAX_PROGRAM = 5000;
 
 function foldCase(ch) {
   return ch.toLowerCase();
-}
-
-function inClass(node, ch) {
-  const c = foldCase(ch);
-  let hit = false;
-  for (const [lo, hi] of node.ranges) {
-    const l = foldCase(lo);
-    const h = foldCase(hi);
-    if (c >= l && c <= h) {
-      hit = true;
-      break;
-    }
-    // 대소문자를 접기 전 값으로도 본다('[A-Z]'에 'a'가 걸리도록).
-    if (ch >= lo && ch <= hi) {
-      hit = true;
-      break;
-    }
-  }
-  return node.negated ? !hit : hit;
 }
 
 /** 마디 나무 → 명령 목록. 끝에는 언제나 match가 붙는다. */

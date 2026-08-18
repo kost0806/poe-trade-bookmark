@@ -8,7 +8,7 @@
  *   - 검색창(아이템): `.search-left .search-select` 안의 태그/선택 라벨/입력값
  *   - 드롭다운 필터(아이템 유형, 희귀도, 타락함 …): 고른 라벨이 안쪽 input의
  *     placeholder로 들어가고, 컨테이너에 `modified`가 붙는다
- *   - 최소/최대 칸: `input.form-control.minmax`, 값이 있으면 `modified`가 붙는다
+ *   - 최소/최대 칸: `input.minmax`, 값이 있으면 `modified`가 붙는다
  *   - 능력치 그룹(`.search-advanced-pane.brown`): 사용자가 쌓은 스탯 행들.
  *     그룹 제목이 곧 조건(모두 일치 / 일치 없음 / 개수 …)이다
  *
