@@ -50,6 +50,7 @@ const PANEL_HTML = `
         <div id="builder" hidden>
           <div class="row">
             <select id="league" title="리그"></select>
+            <button type="button" id="league-refresh" class="mini" title="리그 목록 다시 받기">새로고침</button>
           </div>
 
           <button type="button" id="open-mods">거를 모드 고르기</button>
@@ -159,7 +160,8 @@ const root = host.attachShadow({ mode: 'open' });
 
 const wrapEl = document.createElement('div');
 wrapEl.className = 'wrap';
-// 폭은 여기 한 곳에서만 정한다. .wrap의 all:initial에 지워지지 않도록 인라인으로 준다.
+// 폭은 여기 한 곳에서만 정한다. pushPage의 margin-right와 같은 값이어야 하므로
+// 출처를 PANEL_WIDTH 상수 하나로 묶는다.
 wrapEl.style.setProperty('--panel-width', PANEL_WIDTH);
 wrapEl.innerHTML = PANEL_HTML;
 
@@ -285,6 +287,36 @@ function formatTime(ts) {
 
 const modeLabel = (mode) => (mode === 'exchange' ? '대량거래' : '검색');
 
+/**
+ * 클립보드에 넣는다. 성공 여부를 돌려준다.
+ *
+ * 클립보드 API는 문서가 포커스를 잃었거나 권한이 막히면 거절한다. 그때는 예전
+ * 방식으로 한 번 더 해 본다 — 실패를 삼키면 복사한 줄 알고 붙여넣기만 하게 된다.
+ */
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    /* 아래 방식으로 다시 시도 */
+  }
+
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0;';
+  document.body.append(area);
+  area.select();
+
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    ok = false;
+  }
+  area.remove();
+  return ok;
+}
+
 /** 패널이 거래소 안에서만 살아 있으므로 항상 이 탭에서 그대로 이동한다. */
 async function openRecord(record) {
   // 패널에서 옮겨 간 검색은 기록에 남기지 않는다 — 기록은 거래소에서 직접 한 검색만이다.
@@ -337,8 +369,7 @@ function renderList(bookmarks) {
       copy.textContent = '정규식';
       copy.title = `인게임 정규식 복사\n${bookmark.regex}`;
       copy.addEventListener('click', async () => {
-        await navigator.clipboard.writeText(bookmark.regex);
-        copy.textContent = '복사됨';
+        copy.textContent = (await copyToClipboard(bookmark.regex)) ? '복사됨' : '복사 실패';
         setTimeout(() => (copy.textContent = '정규식'), 1200);
       });
       li.append(copy);
@@ -499,7 +530,9 @@ async function readSummary(parsed) {
 
     const summary = summarizeSearchPane(document);
     if (hasSummary(summary)) return summary;
-    await sleep(FILL_RETRY_MS);
+    // 마지막 시도 뒤에는 기다리지 않는다 — 폼을 끝내 못 읽는 페이지에서 그 0.25초가
+    // 검색 기록 적재를 그만큼 늦춘다.
+    if (i < FILL_TRIES - 1) await sleep(FILL_RETRY_MS);
   }
   return null;
 }
@@ -508,7 +541,7 @@ async function readSummary(parsed) {
  * 폼에서 읽은 조건으로 추천 이름을 채우고, 이 검색을 기록에 남긴다.
  * 끝까지 못 읽으면 검색 ID로 만든 이름이 그대로 남는다.
  */
-async function fillFromSearchPane(parsed) {
+async function fillFromSearchPane(parsed, { record = true } = {}) {
   const summary = await readSummary(parsed);
   if (current?.url !== parsed.url) return;
 
@@ -523,7 +556,8 @@ async function fillFromSearchPane(parsed) {
     syncButton();
   }
 
-  await recordHistory(parsed, summary);
+  // 다시 그리느라 부른 경우에는 기록에 남기지 않는다 — 검색을 새로 한 것이 아니다.
+  if (record) await recordHistory(parsed, summary);
 }
 
 /**
@@ -542,21 +576,39 @@ function watchSearch() {
 
   const summary = summarizeSearchPane(document);
   const name = titleFromSummary(summary);
-  if (!name || name === filledName) return;
+  if (!name) return;
 
+  // 이름이 같아도 조건은 달라졌을 수 있다(값만 고친 경우). 저장할 요약은 언제나
+  // 지금 폼을 따라가야 툴팁이 실제 검색과 어긋나지 않는다.
   currentSummary = summary;
+  if (name === filledName) return;
+
   filledName = name;
   titleEl.value = name;
   nameTouched = false;
   syncButton();
 }
 
+/**
+ * 저장해 둔 북마크에 지금 채워 넣을 수 있는 것. 요약은 붙이기 전에 저장한 북마크에,
+ * 정규식은 그 검색을 빌더로 다시 만들었을 때 생긴다.
+ */
+function fillsExisting(bookmark) {
+  const built = pending && pending.url === current?.url ? pending : null;
+  return {
+    summary: !hasSummary(bookmark.summary) && hasSummary(currentSummary),
+    regex: !bookmark.regex && Boolean(built?.regex),
+  };
+}
+
 /** 저장된 검색이면 '이름 변경', 아니면 '북마크 추가'. 바뀔 내용이 없으면 잠근다. */
 function syncButton() {
   const name = titleEl.value.trim();
   if (savedBookmark) {
-    addBtn.textContent = '이름 변경';
-    addBtn.disabled = name === '' || name === savedBookmark.title;
+    const fills = fillsExisting(savedBookmark);
+    const onlyFills = name === savedBookmark.title && (fills.summary || fills.regex);
+    addBtn.textContent = onlyFills ? '빠진 정보 채우기' : '이름 변경';
+    addBtn.disabled = name === '' || (name === savedBookmark.title && !onlyFills);
   } else {
     addBtn.textContent = '북마크 추가';
     addBtn.disabled = false;
@@ -634,24 +686,33 @@ formEl.addEventListener('submit', async (event) => {
   const existing = bookmarks.find((b) => b.url === current.url);
   const name = titleEl.value.trim() || suggestTitle(current);
 
+  // 빌더로 만든 검색이면 정규식을 함께 보관한다. 이미 저장해 둔 검색을 빌더로 다시
+  // 만들 수도 있으므로 두 분기 모두에서 본다.
+  const built = pending && pending.url === current.url ? pending : null;
+
   let updated;
   let record;
   let message;
 
   if (existing) {
-    if (name === existing.title) return;
-    // 같은 검색을 다시 저장하면 새로 추가하지 않고 이름만 바꾼다.
+    // 이름 말고도 채울 것이 있으면 저장할 값으로 친다 — 요약이 붙기 전에 저장한
+    // 북마크의 검색 조건, 빌더로 다시 만든 검색의 정규식.
+    const fills = fillsExisting(existing);
+    if (name === existing.title && !fills.summary && !fills.regex) return;
+
+    // 같은 검색을 다시 저장하면 새로 추가하지 않고 채울 것만 채운다.
     record = {
       ...existing,
       title: name,
       updatedAt: Date.now(),
-      // 요약을 붙이기 전에 저장한 북마크라면 이번에 함께 넣어 준다.
-      ...(hasSummary(currentSummary) ? { summary: currentSummary } : {}),
+      ...(fills.summary ? { summary: currentSummary } : {}),
+      ...(fills.regex ? { regex: built.regex } : {}),
     };
     updated = bookmarks.map((b) => (b.id === existing.id ? record : b));
-    message = `이름을 "${name}"(으)로 바꿨습니다.`;
+    message =
+      name === existing.title ? '저장해 둔 검색에 빠진 정보를 채웠습니다.' : `이름을 "${name}"(으)로 바꿨습니다.`;
+    if (fills.regex) await clearPending();
   } else {
-    const built = pending && pending.url === current.url ? pending : null;
     record = {
       id: crypto.randomUUID(),
       title: name,
@@ -712,15 +773,28 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const match = current ? bookmarks.find((b) => b.url === current.url) ?? null : null;
   const inSync =
     match?.id === savedBookmark?.id && match?.title === savedBookmark?.title;
-  if (!inSync) renderForm();
+  if (inSync) return;
+
+  // 다시 그리면 채워 둔 이름이 지워지고 filledName도 null로 돌아간다. 이어서 다시
+  // 채우지 않으면 주소가 바뀔 때까지 watchSearch가 물러나 추천이 멈춘다.
+  renderForm().then(() => {
+    if (current?.searchId) fillFromSearchPane(current, { record: false });
+  });
 });
 
 /* ---------------- 16T 8모드 검색 만들기 ---------------- */
 
 // DEFAULT_LEAGUE / REGEX_MAX / buildRegex / buildSearchQuery 는 trade-query.js 전역
-const FALLBACK_LEAGUES = [{ id: 'Allflame', text: '올플레임' }, { id: 'Standard', text: 'Standard' }];
+// 이름은 trade-query.js가 갖고 있다. 여기서 다시 적으면 두 곳이 갈라진다.
+const FALLBACK_LEAGUES = [
+  { id: DEFAULT_LEAGUE, text: DEFAULT_LEAGUE_TEXT },
+  { id: 'Standard', text: 'Standard' },
+];
 // 계정 한도가 5초당 3회다. 버튼 연타로 한도를 태우지 않도록 최소 간격을 둔다.
 const SEARCH_COOLDOWN_MS = 2500;
+
+// 리그 목록 캐시. 리그는 3~4개월마다 바뀌지만 이름·표기는 리그 안에서 변하지 않는다.
+const LEAGUE_CACHE_TTL_MS = 24 * 3600 * 1000;
 // 만든 검색으로 이동하면 페이지가 다시 로드된다. 그 사이 정규식을 잃지 않도록
 // 스토리지에 잠깐 맡겨 두고, 오래된 값은 무시한다.
 const PENDING_TTL_MS = 10 * 60 * 1000;
@@ -729,6 +803,7 @@ const builderEl = $('builder');
 const builderToggle = $('builder-toggle');
 const builderArrow = $('builder-arrow');
 const leagueEl = $('league');
+const leagueRefreshEl = $('league-refresh');
 const modSearchEl = $('mod-search');
 const modListEl = $('mod-list');
 const regexInEl = $('regex-in');
@@ -773,7 +848,12 @@ function setBuilderStatus(message, kind) {
 
 async function loadPending() {
   const saved = (await chrome.storage.local.get(PENDING_KEY))[PENDING_KEY];
-  if (!saved || Date.now() - saved.at > PENDING_TTL_MS) return null;
+  if (!saved) return null;
+  // 만료된 값은 쓰지도 않고 남겨 둘 이유도 없다.
+  if (Date.now() - saved.at > PENDING_TTL_MS) {
+    await clearPending();
+    return null;
+  }
   return saved;
 }
 
@@ -862,18 +942,18 @@ function renderMods() {
 }
 
 function updateRegex() {
-  const regex = buildRegex(selectedMods());
+  // 개수는 selected.size가 아니라 실재하는 모드 수로 센다. 리그가 바뀌어 없어진
+  // 모드가 선택에 남아 있으면 두 수가 갈라져, 화면은 12개라는데 11개만 걸린다.
+  const mods = selectedMods();
+  const count = mods.length;
+  const regex = buildRegex(mods);
   regexOutEl.value = regex;
   regexLenEl.textContent = regex ? `${regex.length} / ${REGEX_MAX}` : '';
   regexLenEl.className = regex.length > REGEX_MAX ? 'count over' : 'count';
-  runSearchBtn.textContent = selected.size
-    ? `거래소 검색 만들기 (${selected.size}개 거름)`
-    : '거래소 검색 만들기';
+  runSearchBtn.textContent = count ? `거래소 검색 만들기 (${count}개 거름)` : '거래소 검색 만들기';
 
-  openModsBtn.textContent = selected.size
-    ? `거를 모드 고르기 (${selected.size}개 고름)`
-    : '거를 모드 고르기';
-  modCountEl.textContent = selected.size ? `${selected.size}개 고름` : '아직 고른 모드 없음';
+  openModsBtn.textContent = count ? `거를 모드 고르기 (${count}개 고름)` : '거를 모드 고르기';
+  modCountEl.textContent = count ? `${count}개 고름` : '아직 고른 모드 없음';
   // 창을 닫지 않아도 정규식이 어떻게 자라는지 보이게 한다.
   modRegexEl.textContent = regex ? `${regex}  (${regex.length}/${REGEX_MAX}자)` : '';
   modRegexEl.className = regex.length > REGEX_MAX ? 'modal-regex over' : 'modal-regex';
@@ -885,21 +965,69 @@ async function saveBuilderState() {
   });
 }
 
-async function loadLeagues() {
+/**
+ * 리그 목록을 받는다. `{ leagues, fallback }`을 돌려주고, fallback이면 코드에 든
+ * 목록을 쓴 것이다 — 새 리그가 열린 날 그것을 진짜 목록으로 오해하면 안 되므로
+ * 부르는 쪽이 알린다.
+ *
+ * force는 캐시를 건너뛴다. 리그는 3~4개월마다 바뀌는데 캐시는 24시간이라, 새 리그가
+ * 열린 날 어제 열어 둔 캐시가 남아 있으면 새 리그를 고를 방법이 없다.
+ */
+async function loadLeagues({ force = false } = {}) {
   const origin = location.origin;
-  const cached = (await chrome.storage.local.get(LEAGUE_CACHE_KEY))[LEAGUE_CACHE_KEY];
-  if (cached && cached.origin === origin && Date.now() - cached.at < 24 * 3600 * 1000) {
-    return cached.leagues;
+  if (!force) {
+    const cached = (await chrome.storage.local.get(LEAGUE_CACHE_KEY))[LEAGUE_CACHE_KEY];
+    if (cached && cached.origin === origin && Date.now() - cached.at < LEAGUE_CACHE_TTL_MS) {
+      return { leagues: cached.leagues, fallback: false };
+    }
   }
   try {
     const res = await fetch(`${origin}/api/trade/data/leagues`, { credentials: 'include' });
     const body = await res.json();
     const leagues = body.result.filter((l) => l.realm === 'pc').map((l) => ({ id: l.id, text: l.text || l.id }));
+    // 빈 목록은 캐시하지 않는다. 저장해 두면 24시간 동안 고를 리그가 없다.
+    if (!leagues.length) return { leagues: FALLBACK_LEAGUES, fallback: true };
     await chrome.storage.local.set({ [LEAGUE_CACHE_KEY]: { origin, at: Date.now(), leagues } });
-    return leagues;
+    return { leagues, fallback: false };
   } catch {
-    return FALLBACK_LEAGUES;
+    return { leagues: FALLBACK_LEAGUES, fallback: true };
   }
+}
+
+/**
+ * 드롭다운을 다시 그린다. 저장해 둔 리그가 목록에 없으면 그 이름을 돌려준다 —
+ * 그대로 두면 말없이 첫 항목이 잡혀 엉뚱한 리그에 검색이 등록된다.
+ */
+function fillLeagues(leagues, savedLeague) {
+  leagueEl.textContent = '';
+  for (const l of leagues) {
+    const opt = document.createElement('option');
+    opt.value = l.id;
+    opt.textContent = l.text;
+    leagueEl.append(opt);
+  }
+  if (!savedLeague || leagues.some((l) => l.id === savedLeague)) {
+    if (savedLeague) leagueEl.value = savedLeague;
+    return null;
+  }
+  return savedLeague;
+}
+
+/**
+ * 실패 원인을 상태 코드로 갈라 안내한다. 전부 로그인 문제로 몰면, 리그 이름이 낡아
+ * 생긴 실패에도 멀쩡한 로그인을 의심하게 된다.
+ */
+function searchFailMessage(status) {
+  if (status === 401 || status === 403) {
+    return `검색 실패 (HTTP ${status}). 거래소 로그인 상태를 확인하세요.`;
+  }
+  if (status === 404) {
+    return `검색 실패 (HTTP 404). 고른 리그(${leagueEl.value})가 거래소에 없습니다. 리그 목록을 새로고침해 보세요.`;
+  }
+  if (status === 400) {
+    return '검색 실패 (HTTP 400). 검색 조건이 거래소에 맞지 않습니다. 모드 목록이 지금 리그와 어긋났을 수 있습니다.';
+  }
+  return `검색 실패 (HTTP ${status}).`;
 }
 
 async function runSearch() {
@@ -933,7 +1061,7 @@ async function runSearch() {
       return;
     }
     if (!res.ok) {
-      setBuilderStatus(`검색 실패 (HTTP ${res.status}). 거래소 로그인 상태를 확인하세요.`, 'error');
+      setBuilderStatus(searchFailMessage(res.status), 'error');
       return;
     }
 
@@ -968,6 +1096,31 @@ builderToggle.addEventListener('click', () => {
 
 modSearchEl.addEventListener('input', renderMods);
 leagueEl.addEventListener('change', saveBuilderState);
+
+// 새 리그가 열린 날, 캐시가 만료되기를 24시간 기다리지 않아도 되게 한다.
+leagueRefreshEl.addEventListener('click', async () => {
+  leagueRefreshEl.disabled = true;
+  setBuilderStatus('리그 목록을 다시 받는 중…', null);
+  try {
+    const before = leagueEl.value;
+    const { leagues, fallback } = await loadLeagues({ force: true });
+    // 못 받았으면 지금 목록을 그대로 둔다. 받아 둔 목록을 폴백 두 개로 갈아 버리면
+    // 새로고침을 눌렀다는 이유로 고를 수 있던 리그가 사라진다.
+    if (fallback) {
+      setBuilderStatus('리그 목록을 받지 못했습니다. 지금 목록을 그대로 둡니다.', 'error');
+      return;
+    }
+    const lostLeague = fillLeagues(leagues, before);
+    await saveBuilderState();
+    if (lostLeague) {
+      setBuilderStatus(`${leagues.length}개를 받았습니다. 고르고 있던 ${lostLeague}이(가) 없어져 ${leagueEl.value}(으)로 바꿨습니다.`, 'ok');
+    } else {
+      setBuilderStatus(`리그 ${leagues.length}개를 다시 받았습니다.`, 'ok');
+    }
+  } finally {
+    leagueRefreshEl.disabled = false;
+  }
+});
 runSearchBtn.addEventListener('click', runSearch);
 
 /* ---------------- 모드 고르기 창 ---------------- */
@@ -1249,13 +1402,32 @@ regexInEl.addEventListener('keydown', (event) => {
 
 $('copy-regex').addEventListener('click', async () => {
   if (!regexOutEl.value) return;
-  await navigator.clipboard.writeText(regexOutEl.value);
-  setBuilderStatus('정규식을 복사했습니다.', 'ok');
+  if (await copyToClipboard(regexOutEl.value)) {
+    setBuilderStatus('정규식을 복사했습니다.', 'ok');
+  } else {
+    setBuilderStatus('클립보드에 쓰지 못했습니다. 사이드바를 한 번 클릭한 뒤 다시 눌러주세요.', 'error');
+  }
 });
+
+/**
+ * 저장해 둔 선택을 되살린다. 지금 모드 목록에 없는 키는 빼고 그 개수를 돌려준다 —
+ * 리그가 바뀌면 모드 풀도 바뀌는데, 없어진 모드는 목록에 안 보여 끌 수도 없으면서
+ * 개수에는 남아 "12개 거름"이라고 적힌 검색이 11개만 거르게 만든다.
+ * (프리셋을 적용할 때 applyPreset이 하는 일과 같다.)
+ */
+function restoreSelection(keys) {
+  const known = new Set(MAP_MODS.map(modKey));
+  let dropped = 0;
+  for (const key of keys) {
+    if (known.has(key)) selected.add(key);
+    else dropped++;
+  }
+  return dropped;
+}
 
 async function initBuilder() {
   const saved = (await chrome.storage.local.get(BUILDER_KEY))[BUILDER_KEY] ?? {};
-  for (const key of saved.selected ?? []) selected.add(key);
+  const dropped = restoreSelection(saved.selected ?? []);
 
   builderEl.hidden = !saved.open;
   builderArrow.textContent = saved.open ? '▼' : '▶';
@@ -1263,18 +1435,19 @@ async function initBuilder() {
   userPresets = await getUserPresets();
   renderPresets();
 
-  const leagues = await loadLeagues();
-  leagueEl.textContent = '';
-  for (const l of leagues) {
-    const opt = document.createElement('option');
-    opt.value = l.id;
-    opt.textContent = l.text;
-    leagueEl.append(opt);
-  }
-  if (saved.league && leagues.some((l) => l.id === saved.league)) leagueEl.value = saved.league;
+  const { leagues, fallback } = await loadLeagues();
+  const lostLeague = fillLeagues(leagues, saved.league);
 
   renderMods();
   updateRegex();
+
+  // 말없이 고친 것은 반드시 알린다. 저장분도 함께 갈아 두어야 같은 안내가 매번 뜨지 않는다.
+  const notes = [];
+  if (dropped) notes.push(`지난번 선택 중 모드 목록에 없는 ${dropped}개는 뺐습니다.`);
+  if (lostLeague) notes.push(`저장해 둔 리그(${lostLeague})가 목록에 없어 ${leagueEl.value}(으)로 바꿨습니다.`);
+  if (fallback) notes.push('리그 목록을 받지 못해 확장에 든 목록을 씁니다. 새로고침을 눌러 보세요.');
+  if (dropped || lostLeague) await saveBuilderState();
+  if (notes.length) setBuilderStatus(notes.join(' '), fallback ? 'error' : null);
 }
 
 (async function init() {

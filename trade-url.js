@@ -11,7 +11,7 @@
  *
  * PoE2(/trade2/)는 대상이 아니므로 제외한다.
  *
- * 여기의 호스트 목록은 manifest.json의 host_permissions와 함께 유지해야 한다.
+ * 여기의 호스트 목록은 manifest.json의 content_scripts.matches와 함께 유지해야 한다.
  */
 const TRADE_HOSTS = [
   'www.pathofexile.com',
