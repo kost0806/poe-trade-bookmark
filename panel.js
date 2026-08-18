@@ -50,6 +50,7 @@ const PANEL_HTML = `
         <div id="builder" hidden>
           <div class="row">
             <select id="league" title="리그"></select>
+            <button type="button" id="league-refresh" class="mini" title="리그 목록 다시 받기">새로고침</button>
           </div>
 
           <button type="button" id="open-mods">거를 모드 고르기</button>
@@ -721,6 +722,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
 const FALLBACK_LEAGUES = [{ id: 'Allflame', text: '올플레임' }, { id: 'Standard', text: 'Standard' }];
 // 계정 한도가 5초당 3회다. 버튼 연타로 한도를 태우지 않도록 최소 간격을 둔다.
 const SEARCH_COOLDOWN_MS = 2500;
+
+// 리그 목록 캐시. 리그는 3~4개월마다 바뀌지만 이름·표기는 리그 안에서 변하지 않는다.
+const LEAGUE_CACHE_TTL_MS = 24 * 3600 * 1000;
 // 만든 검색으로 이동하면 페이지가 다시 로드된다. 그 사이 정규식을 잃지 않도록
 // 스토리지에 잠깐 맡겨 두고, 오래된 값은 무시한다.
 const PENDING_TTL_MS = 10 * 60 * 1000;
@@ -729,6 +733,7 @@ const builderEl = $('builder');
 const builderToggle = $('builder-toggle');
 const builderArrow = $('builder-arrow');
 const leagueEl = $('league');
+const leagueRefreshEl = $('league-refresh');
 const modSearchEl = $('mod-search');
 const modListEl = $('mod-list');
 const regexInEl = $('regex-in');
@@ -862,18 +867,18 @@ function renderMods() {
 }
 
 function updateRegex() {
-  const regex = buildRegex(selectedMods());
+  // 개수는 selected.size가 아니라 실재하는 모드 수로 센다. 리그가 바뀌어 없어진
+  // 모드가 선택에 남아 있으면 두 수가 갈라져, 화면은 12개라는데 11개만 걸린다.
+  const mods = selectedMods();
+  const count = mods.length;
+  const regex = buildRegex(mods);
   regexOutEl.value = regex;
   regexLenEl.textContent = regex ? `${regex.length} / ${REGEX_MAX}` : '';
   regexLenEl.className = regex.length > REGEX_MAX ? 'count over' : 'count';
-  runSearchBtn.textContent = selected.size
-    ? `거래소 검색 만들기 (${selected.size}개 거름)`
-    : '거래소 검색 만들기';
+  runSearchBtn.textContent = count ? `거래소 검색 만들기 (${count}개 거름)` : '거래소 검색 만들기';
 
-  openModsBtn.textContent = selected.size
-    ? `거를 모드 고르기 (${selected.size}개 고름)`
-    : '거를 모드 고르기';
-  modCountEl.textContent = selected.size ? `${selected.size}개 고름` : '아직 고른 모드 없음';
+  openModsBtn.textContent = count ? `거를 모드 고르기 (${count}개 고름)` : '거를 모드 고르기';
+  modCountEl.textContent = count ? `${count}개 고름` : '아직 고른 모드 없음';
   // 창을 닫지 않아도 정규식이 어떻게 자라는지 보이게 한다.
   modRegexEl.textContent = regex ? `${regex}  (${regex.length}/${REGEX_MAX}자)` : '';
   modRegexEl.className = regex.length > REGEX_MAX ? 'modal-regex over' : 'modal-regex';
@@ -885,21 +890,69 @@ async function saveBuilderState() {
   });
 }
 
-async function loadLeagues() {
+/**
+ * 리그 목록을 받는다. `{ leagues, fallback }`을 돌려주고, fallback이면 코드에 든
+ * 목록을 쓴 것이다 — 새 리그가 열린 날 그것을 진짜 목록으로 오해하면 안 되므로
+ * 부르는 쪽이 알린다.
+ *
+ * force는 캐시를 건너뛴다. 리그는 3~4개월마다 바뀌는데 캐시는 24시간이라, 새 리그가
+ * 열린 날 어제 열어 둔 캐시가 남아 있으면 새 리그를 고를 방법이 없다.
+ */
+async function loadLeagues({ force = false } = {}) {
   const origin = location.origin;
-  const cached = (await chrome.storage.local.get(LEAGUE_CACHE_KEY))[LEAGUE_CACHE_KEY];
-  if (cached && cached.origin === origin && Date.now() - cached.at < 24 * 3600 * 1000) {
-    return cached.leagues;
+  if (!force) {
+    const cached = (await chrome.storage.local.get(LEAGUE_CACHE_KEY))[LEAGUE_CACHE_KEY];
+    if (cached && cached.origin === origin && Date.now() - cached.at < LEAGUE_CACHE_TTL_MS) {
+      return { leagues: cached.leagues, fallback: false };
+    }
   }
   try {
     const res = await fetch(`${origin}/api/trade/data/leagues`, { credentials: 'include' });
     const body = await res.json();
     const leagues = body.result.filter((l) => l.realm === 'pc').map((l) => ({ id: l.id, text: l.text || l.id }));
+    // 빈 목록은 캐시하지 않는다. 저장해 두면 24시간 동안 고를 리그가 없다.
+    if (!leagues.length) return { leagues: FALLBACK_LEAGUES, fallback: true };
     await chrome.storage.local.set({ [LEAGUE_CACHE_KEY]: { origin, at: Date.now(), leagues } });
-    return leagues;
+    return { leagues, fallback: false };
   } catch {
-    return FALLBACK_LEAGUES;
+    return { leagues: FALLBACK_LEAGUES, fallback: true };
   }
+}
+
+/**
+ * 드롭다운을 다시 그린다. 저장해 둔 리그가 목록에 없으면 그 이름을 돌려준다 —
+ * 그대로 두면 말없이 첫 항목이 잡혀 엉뚱한 리그에 검색이 등록된다.
+ */
+function fillLeagues(leagues, savedLeague) {
+  leagueEl.textContent = '';
+  for (const l of leagues) {
+    const opt = document.createElement('option');
+    opt.value = l.id;
+    opt.textContent = l.text;
+    leagueEl.append(opt);
+  }
+  if (!savedLeague || leagues.some((l) => l.id === savedLeague)) {
+    if (savedLeague) leagueEl.value = savedLeague;
+    return null;
+  }
+  return savedLeague;
+}
+
+/**
+ * 실패 원인을 상태 코드로 갈라 안내한다. 전부 로그인 문제로 몰면, 리그 이름이 낡아
+ * 생긴 실패에도 멀쩡한 로그인을 의심하게 된다.
+ */
+function searchFailMessage(status) {
+  if (status === 401 || status === 403) {
+    return `검색 실패 (HTTP ${status}). 거래소 로그인 상태를 확인하세요.`;
+  }
+  if (status === 404) {
+    return `검색 실패 (HTTP 404). 고른 리그(${leagueEl.value})가 거래소에 없습니다. 리그 목록을 새로고침해 보세요.`;
+  }
+  if (status === 400) {
+    return '검색 실패 (HTTP 400). 검색 조건이 거래소에 맞지 않습니다. 모드 목록이 지금 리그와 어긋났을 수 있습니다.';
+  }
+  return `검색 실패 (HTTP ${status}).`;
 }
 
 async function runSearch() {
@@ -933,7 +986,7 @@ async function runSearch() {
       return;
     }
     if (!res.ok) {
-      setBuilderStatus(`검색 실패 (HTTP ${res.status}). 거래소 로그인 상태를 확인하세요.`, 'error');
+      setBuilderStatus(searchFailMessage(res.status), 'error');
       return;
     }
 
@@ -968,6 +1021,31 @@ builderToggle.addEventListener('click', () => {
 
 modSearchEl.addEventListener('input', renderMods);
 leagueEl.addEventListener('change', saveBuilderState);
+
+// 새 리그가 열린 날, 캐시가 만료되기를 24시간 기다리지 않아도 되게 한다.
+leagueRefreshEl.addEventListener('click', async () => {
+  leagueRefreshEl.disabled = true;
+  setBuilderStatus('리그 목록을 다시 받는 중…', null);
+  try {
+    const before = leagueEl.value;
+    const { leagues, fallback } = await loadLeagues({ force: true });
+    // 못 받았으면 지금 목록을 그대로 둔다. 받아 둔 목록을 폴백 두 개로 갈아 버리면
+    // 새로고침을 눌렀다는 이유로 고를 수 있던 리그가 사라진다.
+    if (fallback) {
+      setBuilderStatus('리그 목록을 받지 못했습니다. 지금 목록을 그대로 둡니다.', 'error');
+      return;
+    }
+    const lostLeague = fillLeagues(leagues, before);
+    await saveBuilderState();
+    if (lostLeague) {
+      setBuilderStatus(`${leagues.length}개를 받았습니다. 고르고 있던 ${lostLeague}이(가) 없어져 ${leagueEl.value}(으)로 바꿨습니다.`, 'ok');
+    } else {
+      setBuilderStatus(`리그 ${leagues.length}개를 다시 받았습니다.`, 'ok');
+    }
+  } finally {
+    leagueRefreshEl.disabled = false;
+  }
+});
 runSearchBtn.addEventListener('click', runSearch);
 
 /* ---------------- 모드 고르기 창 ---------------- */
@@ -1253,9 +1331,25 @@ $('copy-regex').addEventListener('click', async () => {
   setBuilderStatus('정규식을 복사했습니다.', 'ok');
 });
 
+/**
+ * 저장해 둔 선택을 되살린다. 지금 모드 목록에 없는 키는 빼고 그 개수를 돌려준다 —
+ * 리그가 바뀌면 모드 풀도 바뀌는데, 없어진 모드는 목록에 안 보여 끌 수도 없으면서
+ * 개수에는 남아 "12개 거름"이라고 적힌 검색이 11개만 거르게 만든다.
+ * (프리셋을 적용할 때 applyPreset이 하는 일과 같다.)
+ */
+function restoreSelection(keys) {
+  const known = new Set(MAP_MODS.map(modKey));
+  let dropped = 0;
+  for (const key of keys) {
+    if (known.has(key)) selected.add(key);
+    else dropped++;
+  }
+  return dropped;
+}
+
 async function initBuilder() {
   const saved = (await chrome.storage.local.get(BUILDER_KEY))[BUILDER_KEY] ?? {};
-  for (const key of saved.selected ?? []) selected.add(key);
+  const dropped = restoreSelection(saved.selected ?? []);
 
   builderEl.hidden = !saved.open;
   builderArrow.textContent = saved.open ? '▼' : '▶';
@@ -1263,18 +1357,19 @@ async function initBuilder() {
   userPresets = await getUserPresets();
   renderPresets();
 
-  const leagues = await loadLeagues();
-  leagueEl.textContent = '';
-  for (const l of leagues) {
-    const opt = document.createElement('option');
-    opt.value = l.id;
-    opt.textContent = l.text;
-    leagueEl.append(opt);
-  }
-  if (saved.league && leagues.some((l) => l.id === saved.league)) leagueEl.value = saved.league;
+  const { leagues, fallback } = await loadLeagues();
+  const lostLeague = fillLeagues(leagues, saved.league);
 
   renderMods();
   updateRegex();
+
+  // 말없이 고친 것은 반드시 알린다. 저장분도 함께 갈아 두어야 같은 안내가 매번 뜨지 않는다.
+  const notes = [];
+  if (dropped) notes.push(`지난번 선택 중 모드 목록에 없는 ${dropped}개는 뺐습니다.`);
+  if (lostLeague) notes.push(`저장해 둔 리그(${lostLeague})가 목록에 없어 ${leagueEl.value}(으)로 바꿨습니다.`);
+  if (fallback) notes.push('리그 목록을 받지 못해 확장에 든 목록을 씁니다. 새로고침을 눌러 보세요.');
+  if (dropped || lostLeague) await saveBuilderState();
+  if (notes.length) setBuilderStatus(notes.join(' '), fallback ? 'error' : null);
 }
 
 (async function init() {
