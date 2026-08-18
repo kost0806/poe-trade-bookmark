@@ -40,8 +40,14 @@ const RARITY_NON_UNIQUE = 'nonunique';
 // 귓속말을 기다려야 하는 직접 거래 매물은 8모드 지도를 사는 데 방해만 된다.
 const STATUS_INSTANT_BUYOUT = 'securable';
 
-// 서버(origin)는 패널이 붙어 있는 거래소 페이지에서 그대로 가져다 쓴다.
+/*
+ * 리그 목록을 못 받았을 때 쓰는 이름. 리그가 바뀌면 여기만 고치면 되도록 출처를
+ * 한 곳에 둔다 — 예전에는 panel.js의 폴백 목록에도 같은 이름이 따로 박혀 있어서
+ * 한쪽만 고치면 드롭다운과 실제 등록이 다른 리그를 가리켰다.
+ * (서버(origin)는 패널이 붙어 있는 거래소 페이지에서 그대로 가져다 쓴다.)
+ */
 const DEFAULT_LEAGUE = 'Allflame';
+const DEFAULT_LEAGUE_TEXT = '올플레임';
 
 // 인게임 검색창 입력 한도. 한도도 문법도 poe-regex.js가 갖고 있다.
 const REGEX_MAX = POE_QUERY_MAX;
@@ -178,6 +184,8 @@ if (typeof module !== 'undefined') {
     AFFIX_COUNT_ID,
     INFLUENCE_IDS,
     STATUS_INSTANT_BUYOUT,
+    DEFAULT_LEAGUE,
+    DEFAULT_LEAGUE_TEXT,
     RARITY_NON_UNIQUE,
     REGEX_MAX,
   };

@@ -785,7 +785,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
 /* ---------------- 16T 8모드 검색 만들기 ---------------- */
 
 // DEFAULT_LEAGUE / REGEX_MAX / buildRegex / buildSearchQuery 는 trade-query.js 전역
-const FALLBACK_LEAGUES = [{ id: 'Allflame', text: '올플레임' }, { id: 'Standard', text: 'Standard' }];
+// 이름은 trade-query.js가 갖고 있다. 여기서 다시 적으면 두 곳이 갈라진다.
+const FALLBACK_LEAGUES = [
+  { id: DEFAULT_LEAGUE, text: DEFAULT_LEAGUE_TEXT },
+  { id: 'Standard', text: 'Standard' },
+];
 // 계정 한도가 5초당 3회다. 버튼 연타로 한도를 태우지 않도록 최소 간격을 둔다.
 const SEARCH_COOLDOWN_MS = 2500;
 

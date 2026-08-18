@@ -40,3 +40,8 @@ const PRESETS = [
     ],
   },
 ];
+
+// 브라우저에서는 <script>로 로드되고, 테스트에서는 require로 쓴다.
+if (typeof module !== 'undefined') {
+  module.exports = { PRESETS };
+}

@@ -15,6 +15,7 @@ const assert = require('node:assert');
 Object.assign(globalThis, require('../poe-regex.js'));
 const { MAP_MODS } = require('../map-mods.js');
 Object.assign(globalThis, { MAP_MODS });
+const { PRESETS } = require('../presets.js');
 
 /*
  * 대조에 쓰는 데이터는 test/fixtures에 JSON으로 있다. 어디서 받아 온 것이고 무엇을
@@ -38,6 +39,8 @@ const {
   INFLUENCE_IDS,
   REGEX_MAX,
   RARITY_NON_UNIQUE,
+  DEFAULT_LEAGUE,
+  DEFAULT_LEAGUE_TEXT,
 } = require('../trade-query.js');
 
 /** affix로 모드 하나를 집는다. */
@@ -377,6 +380,37 @@ test('열두 개를 골라도 인게임 한도에 넉넉히 들어간다', () =>
   assert.ok(buildRegex(twelve).length < REGEX_MAX / 2, '열두 개면 한도의 절반도 안 써야 한다');
   // 여든 개를 다 고르면 한도를 넘는다. 화면에서 글자 수가 붉게 바뀌어 알린다.
   assert.ok(buildRegex(MAP_MODS).length > REGEX_MAX);
+});
+
+/*
+ * 기본 프리셋의 stat id는 map-mods.js의 ids와 글자 단위로 같아야 한다. 리그가 바뀌어
+ * 모드가 없어지면 사용자가 프리셋을 고른 순간에야 "…N개는 건너뜀"으로 드러나는데,
+ * 그것은 저장소의 데이터 오류를 사용자가 대신 발견하는 것이다.
+ */
+test('기본 프리셋의 stat id가 모드 목록과 맞는다', () => {
+  const known = new Set(MAP_MODS.map((m) => m.ids.join(',')));
+
+  for (const preset of PRESETS) {
+    if (!preset.keys) continue;
+    const unknown = preset.keys.filter((key) => !known.has(key));
+    assert.deepStrictEqual(unknown, [], `프리셋 '${preset.label}'에 모드 목록에 없는 키가 있다`);
+    assert.ok(preset.keys.length > 0, `프리셋 '${preset.label}'이 비어 있다`);
+  }
+});
+
+// keys가 없는 프리셋은 rec 플래그로 만들어진다. 플래그가 하나도 없으면 빈 프리셋이 된다.
+test('rec 플래그로 만드는 프리셋이 비어 있지 않다', () => {
+  const usesRec = PRESETS.some((preset) => !preset.keys);
+  const recCount = MAP_MODS.filter((m) => m.rec).length;
+  assert.ok(!usesRec || recCount > 0, 'rec 플래그를 쓰는 프리셋이 있는데 rec 모드가 없다');
+});
+
+test('폴백 리그 이름은 한 곳에서만 온다', () => {
+  // panel.js의 FALLBACK_LEAGUES가 이 값을 그대로 쓴다. 여기서 사라지면 그쪽이 깨진다.
+  assert.strictEqual(typeof DEFAULT_LEAGUE, 'string');
+  assert.ok(DEFAULT_LEAGUE.length > 0);
+  assert.strictEqual(typeof DEFAULT_LEAGUE_TEXT, 'string');
+  assert.ok(DEFAULT_LEAGUE_TEXT.length > 0);
 });
 
 test('한도는 엔진과 같은 값을 쓴다', () => {
